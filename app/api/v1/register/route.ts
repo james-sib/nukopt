@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+// Force dynamic rendering - don't try to pre-render at build time
+export const dynamic = 'force-dynamic';
+
+function getSupabase() {
+  return createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
 
 // Supported AI providers and their key validation
 const PROVIDERS: Record<string, { prefix: string; validateUrl: string }> = {
@@ -52,6 +57,8 @@ export async function POST(req: NextRequest) {
     
     // Hash the key to create account ID (don't store original)
     const keyHash = crypto.createHash('sha256').update(key).digest('hex');
+    
+    const supabase = getSupabase();
     
     // Check if account already exists
     const { data: existing } = await supabase

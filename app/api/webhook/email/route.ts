@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { simpleParser } from 'mailparser';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+export const dynamic = 'force-dynamic';
+
+function getSupabase() {
+  return createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
 
 // Extract verification codes, OTPs, and links from email
 function extractVerification(text: string, html: string) {
@@ -58,6 +62,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid secret' }, { status: 401 });
     }
     
+    const supabase = getSupabase();
     const contentType = req.headers.get('content-type') || '';
     let to: string, from: string, subject: string, text: string, html: string, rawEmail: string;
     

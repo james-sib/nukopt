@@ -2,16 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+export const dynamic = 'force-dynamic';
+
+function getSupabase() {
+  return createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
 
 async function getAccount(req: NextRequest) {
   const auth = req.headers.get('authorization');
   if (!auth?.startsWith('Bearer nk-')) return null;
   const apiKey = auth.slice(7);
   
+  const supabase = getSupabase();
   const { data } = await supabase
     .from('nukopt_accounts')
     .select('id')
@@ -26,6 +31,7 @@ export async function GET(req: NextRequest) {
   const account = await getAccount(req);
   if (!account) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('nukopt_mailboxes')
     .select('id, email, created_at')
@@ -39,6 +45,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const account = await getAccount(req);
   if (!account) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  
+  const supabase = getSupabase();
   
   // Check mailbox limit (5 per account)
   const { count } = await supabase

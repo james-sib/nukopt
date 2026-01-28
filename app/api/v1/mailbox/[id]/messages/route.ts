@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+export const dynamic = 'force-dynamic';
+
+function getSupabase() {
+  return createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
 
 async function verifyAccess(req: NextRequest, mailboxId: string) {
   const auth = req.headers.get('authorization');
   if (!auth?.startsWith('Bearer nk-')) return false;
+  
+  const supabase = getSupabase();
   
   // Get account from API key
   const { data: account } = await supabase
@@ -40,6 +46,7 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('nukopt_messages')
     .select('id, from_address, subject, otp, verification_links, created_at')
