@@ -13,7 +13,7 @@ async function getAccount(req: NextRequest) {
   const apiKey = auth.slice(7);
   
   const { data } = await supabase
-    .from('accounts')
+    .from('nukopt_accounts')
     .select('id')
     .eq('api_key', apiKey)
     .single();
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   if (!account) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   
   const { data, error } = await supabase
-    .from('mailboxes')
+    .from('nukopt_mailboxes')
     .select('id, email, created_at')
     .eq('account_id', account.id);
   
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   
   // Check mailbox limit (5 per account)
   const { count } = await supabase
-    .from('mailboxes')
+    .from('nukopt_mailboxes')
     .select('*', { count: 'exact', head: true })
     .eq('account_id', account.id);
   
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   const email = `${localPart}@nukopt.com`;
   
   const { data, error } = await supabase
-    .from('mailboxes')
+    .from('nukopt_mailboxes')
     .insert({
       account_id: account.id,
       email,

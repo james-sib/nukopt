@@ -10,28 +10,41 @@ async function verifyAccess(req: NextRequest, mailboxId: string) {
   const auth = req.headers.get('authorization');
   if (!auth?.startsWith('Bearer nk-')) return false;
   
-  const { data } = await supabase
-    .from('mailboxes')
-    .select('account:accounts!inner(api_key)')
-    .eq('id', mailboxId)
+  // Get account from API key
+  const { data: account } = await supabase
+    .from('nukopt_accounts')
+    .select('id')
+    .eq('api_key', auth.slice(7))
     .single();
   
-  return data?.account?.api_key === auth.slice(7);
+  if (!account) return false;
+  
+  // Verify mailbox belongs to account
+  const { data: mailbox } = await supabase
+    .from('nukopt_mailboxes')
+    .select('id')
+    .eq('id', mailboxId)
+    .eq('account_id', account.id)
+    .single();
+  
+  return !!mailbox;
 }
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string; msgId: string } }
 ) {
-  if (!await verifyAccess(req, params.id)) {
+  const { id, msgId } = await params;
+  
+  if (!await verifyAccess(req, id)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   
   const { data, error } = await supabase
-    .from('messages')
+    .from('nukopt_messages')
     .select('*')
-    .eq('id', params.msgId)
-    .eq('mailbox_id', params.id)
+    .eq('id', msgId)
+    .eq('mailbox_id', id)
     .single();
   
   if (error || !data) {
@@ -45,15 +58,17 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string; msgId: string } }
 ) {
-  if (!await verifyAccess(req, params.id)) {
+  const { id, msgId } = await params;
+  
+  if (!await verifyAccess(req, id)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   
   await supabase
-    .from('messages')
+    .from('nukopt_messages')
     .delete()
-    .eq('id', params.msgId)
-    .eq('mailbox_id', params.id);
+    .eq('id', msgId)
+    .eq('mailbox_id', id);
   
   return NextResponse.json({ deleted: true });
 }

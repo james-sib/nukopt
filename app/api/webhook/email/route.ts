@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     
     // Find mailbox
     const { data: mailbox } = await supabase
-      .from('mailboxes')
+      .from('nukopt_mailboxes')
       .select('id, account_id')
       .eq('local_part', localPart)
       .single();
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     // Check daily limit (100 per account)
     const today = new Date().toISOString().split('T')[0];
     const { count } = await supabase
-      .from('messages')
+      .from('nukopt_messages')
       .select('*', { count: 'exact', head: true })
       .eq('mailbox_id', mailbox.id)
       .gte('created_at', today);
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
     
     // Store message
     const { error } = await supabase
-      .from('messages')
+      .from('nukopt_messages')
       .insert({
         mailbox_id: mailbox.id,
         from_address: from,

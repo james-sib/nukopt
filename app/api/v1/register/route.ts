@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     
     // Check if account already exists
     const { data: existing } = await supabase
-      .from('accounts')
+      .from('nukopt_accounts')
       .select('api_key')
       .eq('key_hash', keyHash)
       .single();
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     // Create new account
     const apiKey = 'nk-' + crypto.randomBytes(32).toString('hex');
     
-    const { error } = await supabase.from('accounts').insert({
+    const { error } = await supabase.from('nukopt_accounts').insert({
       key_hash: keyHash,
       provider,
       api_key: apiKey,
