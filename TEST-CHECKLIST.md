@@ -580,9 +580,22 @@
 - [ ] Dashed OTP format (123-456)
 - [ ] DKIM/S/MIME/PGP handling tests
 
+### Session 4 Additional Testing (11:31+ CST)
+
+**Verified Working:**
+- ✅ HTML span OTP: `<span>55</span><span>66</span><span>77</span>` → `556677`
+- ✅ Mailbox limit (5): 6th creation returns "Mailbox limit reached"
+- ✅ Delete frees slot: Can create new mailbox after delete
+- ✅ Cross-account isolation: Other account gets "Mailbox not found"
+
+**Rate Limiting:**
+- ⚠️ 70 parallel requests all returned 200 (no 429)
+- May need production verification with real client IPs
+- Code is in place but Upstash may not be receiving correct IP
+
 ### Final Notes
 - SQL injection emails blocked by Cloudflare WAF (good!)
 - All critical functionality tested and working
-- 4 bugs found and fixed by bot army
-- Rate limiting now active on all endpoints
+- 6 bugs found and fixed (including zero-width, HTML spans)
+- Rate limiting code deployed but needs production verification
 
