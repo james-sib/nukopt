@@ -50,13 +50,18 @@ export async function GET(
     return NextResponse.json({ error: 'Mailbox not found' }, { status: 404 });
   }
   
+  // Parse limit from query params (default 50, max 100)
+  const url = new URL(req.url);
+  const limitParam = url.searchParams.get('limit');
+  const limit = Math.min(Math.max(parseInt(limitParam || '50', 10) || 50, 1), 100);
+  
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('nukopt_messages')
     .select('id, from_address, subject, otp, verification_links, created_at')
     .eq('mailbox_id', id)
     .order('created_at', { ascending: false })
-    .limit(50);
+    .limit(limit);
   
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ messages: data });

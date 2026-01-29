@@ -80,6 +80,19 @@ export async function DELETE(
   }
   
   const supabase = getSupabase();
+  
+  // First check if message exists
+  const { data: existing } = await supabase
+    .from('nukopt_messages')
+    .select('id')
+    .eq('id', msgId)
+    .eq('mailbox_id', id)
+    .single();
+  
+  if (!existing) {
+    return NextResponse.json({ error: 'Message not found' }, { status: 404 });
+  }
+  
   await supabase
     .from('nukopt_messages')
     .delete()
