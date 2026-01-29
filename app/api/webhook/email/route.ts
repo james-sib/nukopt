@@ -78,7 +78,9 @@ function htmlToText(html: string): string {
     .replace(/<!--[\s\S]*?-->/g, '')
     // Replace block elements with newlines
     .replace(/<\/(p|div|br|tr|li|h[1-6])>/gi, '\n')
-    // Remove all remaining tags
+    // Remove inline tags without adding space (span, b, i, strong, em, a, etc.)
+    .replace(/<\/?(span|b|i|strong|em|a|u|s|sub|sup|font|mark)[^>]*>/gi, '')
+    // Remove remaining tags with space (for other block-like elements)
     .replace(/<[^>]+>/g, ' ')
     // Decode common HTML entities
     .replace(/&nbsp;/g, ' ')
