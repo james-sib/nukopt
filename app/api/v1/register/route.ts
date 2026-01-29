@@ -240,10 +240,11 @@ export async function POST(req: NextRequest) {
       .single();
     
     if (existing) {
+      // SECURITY: Never return existing API keys - prevents account takeover via leaked third-party keys
       return NextResponse.json({ 
-        api_key: existing.api_key,
-        message: 'Account already exists'
-      });
+        error: 'Account already exists. Use your existing nukopt API key.',
+        hint: 'If you lost your key, contact support.'
+      }, { status: 409 });
     }
     
     // Create new account
@@ -268,13 +269,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET endpoint to list supported providers
+// GET endpoint to list supported providers (no prefixes exposed for security)
 export async function GET() {
   return NextResponse.json({
     providers: Object.entries(PROVIDERS).map(([id, config]) => ({
       id,
-      description: config.description,
-      prefixes: config.prefixes.length > 0 ? config.prefixes : undefined
+      description: config.description
     }))
   });
 }

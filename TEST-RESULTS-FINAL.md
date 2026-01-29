@@ -187,3 +187,48 @@ EXECUTE FUNCTION check_mailbox_limit_before_insert();
 - Supabase (DB + Trigger): ✅ Working
 - Cloudflare Worker: ✅ Latest version deployed
 
+
+---
+
+## 🤖 BOT ARMY STRESS TEST (2026-01-29 10:00 CST)
+
+### Deployed Bots
+- Bot 1-3, 5: Hit wrong URL (CF Worker instead of Render) - no useful data
+- Bot 4: Security test ✅
+- Bot 6: Mailbox stress test ✅  
+- Bot 7: Security test (found critical issue!) ✅
+
+### 🚨 CRITICAL FINDINGS
+
+#### 1. API Key Disclosure on Re-Registration (CRITICAL)
+**Found by:** Bot 7
+**Endpoint:** POST /api/v1/register
+**Issue:** Re-registering with an existing third-party key returns the full nukopt API key
+```json
+{"api_key":"nk-xxx...","message":"Account already exists"}
+```
+**Impact:** Account takeover if attacker obtains victim's OpenRouter/OpenAI key
+**Fix:** Return only `{"error":"Account already exists"}` without the key
+
+#### 2. No Rate Limiting (MEDIUM)
+**Found by:** Bot 4, Bot 7
+**Impact:** Enables brute-force, DoS, credential stuffing
+**Fix:** Add rate limiting (e.g., 60 req/min per token, 10 registrations/hour per IP)
+
+### ✅ CONFIRMED WORKING
+
+| Feature | Status |
+|---------|--------|
+| Registration (15 providers) | ✅ |
+| Mailbox CRUD | ✅ |
+| 5-mailbox limit | ✅ |
+| Race condition protection | ✅ (DB trigger) |
+| Email delivery | ✅ (~10-15s) |
+| OTP extraction | ✅ |
+| Link extraction | ✅ |
+| Cross-account isolation | ✅ |
+| SQL injection protection | ✅ |
+| Auth validation | ✅ |
+
+### Security Posture: GOOD (with 2 fixes needed)
+
