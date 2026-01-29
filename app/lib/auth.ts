@@ -117,3 +117,31 @@ export async function addTimingJitter(maxMs: number = 50): Promise<void> {
   const jitter = Math.random() * maxMs;
   await new Promise(resolve => setTimeout(resolve, jitter));
 }
+
+/**
+ * Verify nukopt API key and return account info
+ * Returns account object if valid, null if invalid
+ */
+export async function verifyNukoptKey(apiKey: string): Promise<{ id: string; provider: string } | null> {
+  if (!apiKey?.startsWith('nk-')) {
+    return null;
+  }
+  
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('nukopt_accounts')
+      .select('id, provider')
+      .eq('api_key', apiKey)
+      .single();
+    
+    if (error || !data) {
+      return null;
+    }
+    
+    return data;
+  } catch (err) {
+    console.error('verifyNukoptKey error:', err);
+    return null;
+  }
+}

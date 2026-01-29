@@ -121,7 +121,35 @@ curl https://nukopt.com/api/v1/mailbox/{id}/messages \\
             <span>/api/v1/mailbox/:id/messages/:mid</span>
             <span className="text-gray-500">— Delete message</span>
           </div>
+          <div className="flex gap-2 mt-4 pt-4 border-t">
+            <span className="text-blue-600 w-20">POST</span>
+            <span>/api/v1/feedback</span>
+            <span className="text-gray-500">— Submit feedback (500 char max)</span>
+          </div>
+          <div className="flex gap-2">
+            <span className="text-green-600 w-20">GET</span>
+            <span>/api/v1/feedback</span>
+            <span className="text-gray-500">— List your tickets</span>
+          </div>
         </div>
+      </section>
+      
+      <section className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Feedback API</h2>
+        <p className="text-gray-600 mb-3">Something broken? Need a feature? Let us know:</p>
+        <pre className="bg-gray-900 text-green-400 p-4 rounded overflow-x-auto text-sm">
+{`# Submit feedback
+curl -X POST https://nukopt.com/api/v1/feedback \\
+  -H "Authorization: Bearer nk-..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"message": "OTP not extracted from XYZ service", "category": "bug"}'
+# Categories: bug, feature, question, other
+
+# Check your tickets
+curl https://nukopt.com/api/v1/feedback \\
+  -H "Authorization: Bearer nk-..."
+# Returns: {"tickets": [{"id": "...", "status": "open", ...}]}`}
+        </pre>
       </section>
       
       <section className="mb-8">

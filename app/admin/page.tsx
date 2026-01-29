@@ -23,14 +23,29 @@ interface Stats {
   generatedAt: string;
 }
 
+interface Ticket {
+  id: string;
+  message: string;
+  category: string;
+  status: string;
+  created_at: string;
+  admin_response: string | null;
+  responded_at: string | null;
+  provider: string;
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [responseText, setResponseText] = useState('');
   const router = useRouter();
 
   useEffect(() => {
     fetchStats();
+    fetchTickets();
   }, []);
 
   const fetchStats = async () => {
@@ -47,6 +62,39 @@ export default function AdminDashboard() {
       setError('Failed to load stats');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTickets = async () => {
+    try {
+      const res = await fetch('/api/admin/feedback');
+      if (res.ok) {
+        const data = await res.json();
+        setTickets(data.tickets || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch tickets:', err);
+    }
+  };
+
+  const updateTicket = async (id: string, status: string, adminResponse?: string) => {
+    try {
+      const res = await fetch('/api/admin/feedback', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id, 
+          status,
+          ...(adminResponse && { admin_response: adminResponse })
+        }),
+      });
+      if (res.ok) {
+        fetchTickets();
+        setSelectedTicket(null);
+        setResponseText('');
+      }
+    } catch (err) {
+      console.error('Failed to update ticket:', err);
     }
   };
 
@@ -235,6 +283,113 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Feedback Tickets */}
+        <div className="mt-6 bg-white p-4 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Feedback Tickets</h2>
+            <span className="text-sm text-gray-500">
+              {tickets.filter(t => t.status === 'open').length} open
+            </span>
+          </div>
+          
+          {tickets.length === 0 ? (
+            <p className="text-gray-500 text-sm">No feedback tickets yet</p>
+          ) : (
+            <div className="space-y-3">
+              {tickets.map((ticket) => (
+                <div 
+                  key={ticket.id} 
+                  className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 ${
+                    ticket.status === 'open' ? 'border-yellow-300 bg-yellow-50' : 
+                    ticket.status === 'resolved' ? 'border-green-300 bg-green-50' : 'border-gray-200'
+                  }`}
+                  onClick={() => setSelectedTicket(ticket)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          ticket.category === 'bug' ? 'bg-red-100 text-red-700' :
+                          ticket.category === 'feature' ? 'bg-blue-100 text-blue-700' :
+                          ticket.category === 'question' ? 'bg-purple-100 text-purple-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {ticket.category}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          ticket.status === 'open' ? 'bg-yellow-100 text-yellow-700' :
+                          ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                          ticket.status === 'resolved' ? 'bg-green-100 text-green-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {ticket.status}
+                        </span>
+                        <span className="text-xs text-gray-400 capitalize">{ticket.provider}</span>
+                      </div>
+                      <p className="text-sm">{ticket.message}</p>
+                      {ticket.admin_response && (
+                        <p className="text-xs text-gray-500 mt-1 italic">↳ {ticket.admin_response}</p>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-400 ml-2">{formatDate(ticket.created_at)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Ticket Response Modal */}
+        {selectedTicket && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-6 max-w-lg w-full">
+              <h3 className="text-lg font-semibold mb-4">Respond to Ticket</h3>
+              
+              <div className="mb-4 p-3 bg-gray-50 rounded">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs px-2 py-0.5 rounded bg-gray-100">{selectedTicket.category}</span>
+                  <span className="text-xs text-gray-500 capitalize">{selectedTicket.provider}</span>
+                </div>
+                <p className="text-sm">{selectedTicket.message}</p>
+              </div>
+              
+              <textarea
+                value={responseText}
+                onChange={(e) => setResponseText(e.target.value)}
+                placeholder="Your response (optional)..."
+                className="w-full p-2 border rounded mb-4 h-24 text-sm"
+              />
+              
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => { setSelectedTicket(null); setResponseText(''); }}
+                  className="px-3 py-1.5 text-gray-600 hover:bg-gray-100 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => updateTicket(selectedTicket.id, 'in_progress', responseText || undefined)}
+                  className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                >
+                  In Progress
+                </button>
+                <button
+                  onClick={() => updateTicket(selectedTicket.id, 'resolved', responseText || undefined)}
+                  className="px-3 py-1.5 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                >
+                  Resolve
+                </button>
+                <button
+                  onClick={() => updateTicket(selectedTicket.id, 'closed', responseText || undefined)}
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
