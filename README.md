@@ -1,107 +1,156 @@
-# NUKOPT - Email Service for AI Agents
+# NukOpt
 
-API-first, receive-only email service designed for AI agents and bots.
+**AI API Proxy Service** - Use one API key across multiple AI providers.
 
-## Features
+🌐 **Live:** https://nukopt.onrender.com
 
-- **Receive-only** — No sending means zero spam/abuse risk
-- **API Key Passport** — Register with your AI API key (OpenAI, Anthropic, etc.)
-- **Auto OTP Extraction** — Verification codes parsed automatically
-- **Link Detection** — Verification/confirmation links extracted
-- **Simple REST API** — Easy integration for any bot
+## What is NukOpt?
+
+NukOpt lets you register your AI provider API keys once and get a unified `nk-...` key that works everywhere. Your original keys are encrypted and never exposed.
+
+**Supported Providers:**
+- OpenAI (GPT-4, GPT-4o, etc.)
+- Anthropic (Claude)
+- OpenRouter (access to 100+ models)
 
 ## Quick Start
 
-### 1. Register (Human does this once)
+### 1. Register Your API Key
+
 ```bash
-curl -X POST https://nukopt.com/api/v1/register \
+curl -X POST https://nukopt.onrender.com/api/v1/register \
   -H "Content-Type: application/json" \
-  -d '{"provider": "openai", "key": "sk-..."}'
-
-# Returns: {"api_key": "nk-abc123..."}
+  -d '{"provider": "openrouter", "key": "sk-or-..."}'
 ```
 
-### 2. Create Mailbox
-```bash
-curl -X POST https://nukopt.com/api/v1/mailbox \
-  -H "Authorization: Bearer nk-abc123..."
-
-# Returns: {"id": "uuid", "email": "random123@nukopt.com"}
+Response:
+```json
+{"api_key": "nk-abc123..."}
 ```
 
-### 3. Check Messages
-```bash
-curl https://nukopt.com/api/v1/mailbox/{id}/messages \
-  -H "Authorization: Bearer nk-abc123..."
+### 2. Make API Calls
 
-# Returns messages with auto-extracted OTPs and verification links
+Use your `nk-...` key just like you'd use OpenAI's API:
+
+```bash
+curl -X POST https://nukopt.onrender.com/api/v1/chat/completions \
+  -H "Authorization: Bearer nk-abc123..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+### 3. Check Your Usage
+
+```bash
+curl https://nukopt.onrender.com/api/v1/usage \
+  -H "Authorization: Bearer nk-abc123..."
 ```
 
 ## API Reference
 
-### Registration
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/register` | Register with AI API key |
+### POST /api/v1/register
 
-### Mailboxes
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/mailbox` | Create new mailbox |
-| GET | `/api/v1/mailbox` | List all mailboxes |
-| DELETE | `/api/v1/mailbox/{id}` | Delete mailbox |
+Register a new API key and get a NukOpt key.
 
-### Messages
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/mailbox/{id}/messages` | List messages |
-| GET | `/api/v1/mailbox/{id}/messages/{msgId}` | Get full message |
-| DELETE | `/api/v1/mailbox/{id}/messages/{msgId}` | Delete message |
+**Request:**
+```json
+{
+  "provider": "openai" | "anthropic" | "openrouter",
+  "key": "your-provider-api-key"
+}
+```
 
-## Free Tier Limits
+**Response:**
+```json
+{
+  "api_key": "nk-..."
+}
+```
 
-| Limit | Value |
-|-------|-------|
-| Sending | ❌ Disabled |
-| Inboxes per account | 5 |
-| Emails per day per inbox | 100 |
-| Email size | 500 KB |
-| Message retention | 7 days |
+### POST /api/v1/chat/completions
 
-## Supported AI Providers
+Proxy chat completions to your provider. Compatible with OpenAI's API format.
 
-- OpenAI (`sk-...`)
-- Anthropic (`sk-ant-...`)
-- OpenRouter (`sk-or-...`)
+**Headers:**
+- `Authorization: Bearer nk-...`
+- `Content-Type: application/json`
 
-## Local Development
+**Request Body:** Same as OpenAI's chat completions API.
+
+**Streaming:** Set `"stream": true` for streaming responses.
+
+### GET /api/v1/usage
+
+Get usage statistics for your API key.
+
+**Headers:**
+- `Authorization: Bearer nk-...`
+
+**Response:**
+```json
+{
+  "provider": "openrouter",
+  "account_created": "2024-01-28T...",
+  "usage": {
+    "today": 5,
+    "this_month": 42,
+    "total": 100
+  },
+  "models": {
+    "openai/gpt-4o-mini": 80,
+    "anthropic/claude-3-opus": 20
+  },
+  "recent": [...]
+}
+```
+
+## Rate Limits
+
+- **100 requests per minute** per API key
+- Rate limit headers included in responses
+
+## Security
+
+- Your provider API keys are **encrypted at rest** using AES-256-GCM
+- Keys are never logged or exposed
+- Each `nk-...` key is unique and revocable
+
+## Use Cases
+
+1. **AI Agents** - Give agents a single key that works across providers
+2. **Key Rotation** - Rotate provider keys without updating clients
+3. **Usage Tracking** - Monitor API usage across all your applications
+4. **Access Control** - Revoke access without touching provider dashboards
+
+## Self-Hosting
 
 ```bash
-# Install dependencies
+git clone https://github.com/james-sib/nukopt.git
+cd nukopt
 npm install
+```
 
-# Set up environment
-cp .env.example .env.local
-# Edit .env.local with your Supabase credentials
+Required environment variables:
+```
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-key
+ENCRYPTION_KEY=your-32-byte-hex-key
+UPSTASH_REDIS_TOKEN=your-upstash-token  # for rate limiting
+```
 
-# Run development server
+```bash
 npm run dev
-```
-
-## Environment Variables
-
-```
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_SERVICE_KEY=eyJ...
-WEBHOOK_SECRET=nukopt_webhook_...
 ```
 
 ## Tech Stack
 
-- **Framework:** Next.js 14
-- **Database:** Supabase (PostgreSQL)
-- **Email Receiving:** Cloudflare Email Routing (pending setup)
-- **Hosting:** Render (https://nukopt.onrender.com)
+- **Next.js 14** - API routes
+- **Supabase** - Database (accounts, usage tracking)
+- **Upstash Redis** - Rate limiting
+- **Render** - Hosting
 
 ## License
 
