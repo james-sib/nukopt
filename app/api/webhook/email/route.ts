@@ -11,6 +11,15 @@ function getSupabase() {
   );
 }
 
+// Decode quoted-printable encoding (=XX hex and =\r\n line continuations)
+function decodeQuotedPrintable(str: string): string {
+  if (!str) return str;
+  return str
+    .replace(/=\r?\n/g, '')  // Remove soft line breaks
+    .replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/=3D/gi, '=');  // Common encoding for =
+}
+
 // Extract verification codes, OTPs, and links from email
 function extractVerification(text: string, html: string) {
   const result: { otp?: string; links: string[] } = { links: [] };
@@ -62,7 +71,8 @@ function extractVerification(text: string, html: string) {
     /https?:\/\/[^\s<>"]+\?[^\s<>"]*(?:code|token|key)=[^\s<>"]*/gi,
   ];
   
-  const content = html || text;
+  // Decode quoted-printable before extracting links
+  const content = decodeQuotedPrintable(html || text);
   for (const pattern of linkPatterns) {
     const matches = content.match(pattern);
     if (matches) {
