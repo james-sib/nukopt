@@ -466,7 +466,45 @@
 
 ## TEST RESULTS LOG
 
-| Test | Status | Date | Notes |
-|------|--------|------|-------|
-| ... | ... | ... | ... |
+**Last Updated:** 2026-01-29 10:46 CST by Alisher
+
+### Session Summary (2026-01-29)
+
+| Section | Tested | Passed | Failed | Fixed |
+|---------|--------|--------|--------|-------|
+| 1. Registration | 9 | 7 | 2 | 2 (pending deploy) |
+| 2. Mailbox Ops | 12 | 12 | 0 | 1 bug fixed |
+| 6. Messages | 16 | 16 | 0 | 2 bugs fixed |
+| 7. Security | 14 | 14 | 0 | - |
+| 9. Error Handling | 10 | 8 | 2 | 2 (pending deploy) |
+| AI Council Attacks | 9 | 9 | 0 | - |
+
+### Bugs Found & Fixed
+
+| Bug | Description | Commit | Status |
+|-----|-------------|--------|--------|
+| 401→404 | Non-existent mailbox returned 401 | 930c83a | ✅ Live |
+| limit ignored | ?limit=N on messages list ignored | c1606a2 | 🔄 Building |
+| DELETE 200 | DELETE message returned 200 for non-existent | c1606a2 | 🔄 Building |
+| JSON 500 | Malformed JSON returned 500 instead of 400 | 0676ee4 | ⏳ Queued |
+| Empty 500 | Empty body returned 500 instead of 400 | 0676ee4 | ⏳ Queued |
+| 405 body | DELETE /register returned empty 405 | 0676ee4 | ⏳ Queued |
+| MIME leak | MIME boundaries in email body | c60da00 | ✅ Live |
+
+### Sections NOT YET TESTED
+- [ ] Section 3: Email Receiving (Cloudflare Worker → Webhook)
+- [ ] Section 4: OTP Extraction
+- [ ] Section 5: Link Extraction  
+- [ ] Section 8: Cleanup & Retention
+- [ ] Section 10: Performance
+- [ ] Section 11: Real-world Scenarios
+- [ ] Section 12: Edge Cases & Weird Shit
+- [ ] AI Council: Protocol/Format tests (DKIM, S/MIME, etc.)
+- [ ] AI Council: OTP & Infrastructure edge cases
+
+### Notes for Next Session
+1. Wait for deploys to complete before re-testing Sections 1 & 9
+2. Section 3-5 need email sending capability to test properly
+3. Performance tests (Section 10) need load testing setup
+4. Consider spawning more bot agents for remaining ~100 tests
 
