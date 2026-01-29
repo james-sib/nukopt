@@ -714,3 +714,10 @@ Deployed 4 specialized test bots:
 - [x] Rapid polling (50 concurrent) → ❌ 92% 502 errors
 
 **Performance Finding:** Server handles email inbound well but has limited concurrent API capacity (~4 req/sec under heavy load). Low priority - unlikely in real usage.
+
+**Bot 6 (Special Content) Results:**
+- [x] Calendar invite (VCALENDAR) → OTP ✅, Links ❌ (BUG-041)
+- [x] Mailing list headers → OTP ✅, Links ❌ (BUG-041)
+- [x] Base64 body → Not decoded (expected)
+- [x] Special chars `<>&"'` → OTP ✅
+- [x] 20-level nested HTML → OTP ✅, Links ✅
