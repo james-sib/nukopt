@@ -31,34 +31,67 @@ export default {
       const boundaryMatch = rawEmail.match(/boundary="?([^"\r\n]+)"?/i);
       const boundary = boundaryMatch ? boundaryMatch[1] : null;
       
+      // Helper to decode content based on transfer encoding
+      function decodeContent(content, encoding) {
+        if (!content) return content;
+        encoding = (encoding || '').toLowerCase();
+        if (encoding === 'base64') {
+          try {
+            return atob(content.replace(/\s/g, ''));
+          } catch (e) {
+            return content;
+          }
+        }
+        if (encoding === 'quoted-printable') {
+          return content
+            .replace(/=\r?\n/g, '')
+            .replace(/=([0-9A-F]{2})/gi, (_, hex) => 
+              String.fromCharCode(parseInt(hex, 16)));
+        }
+        return content;
+      }
+      
       // Try to extract text content
       if (boundary) {
-        // Multipart: find text/plain section up to next boundary
-        const textPattern = new RegExp(
-          `Content-Type:\\s*text/plain[^\\r\\n]*\\r\\n(?:[^\\r\\n]+\\r\\n)*\\r\\n([\\s\\S]*?)(?=\\r\\n--${boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
-          'i'
+        // Multipart: find text/plain section
+        const textSectionMatch = rawEmail.match(
+          new RegExp(`Content-Type:\\s*text/plain[^\\r\\n]*([\\s\\S]*?)(?=\\r\\n--${boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'i')
         );
-        const textMatch = rawEmail.match(textPattern);
-        if (textMatch) {
-          emailData.text = textMatch[1].trim();
+        if (textSectionMatch) {
+          const section = textSectionMatch[1];
+          const encodingMatch = section.match(/Content-Transfer-Encoding:\\s*([^\r\n]+)/i);
+          const encoding = encodingMatch ? encodingMatch[1].trim() : '';
+          const bodyStart = section.indexOf('\r\n\r\n');
+          if (bodyStart > -1) {
+            const body = section.slice(bodyStart + 4).trim();
+            emailData.text = decodeContent(body, encoding);
+          }
         }
         
         // Find HTML section
-        const htmlPattern = new RegExp(
-          `Content-Type:\\s*text/html[^\\r\\n]*\\r\\n(?:[^\\r\\n]+\\r\\n)*\\r\\n([\\s\\S]*?)(?=\\r\\n--${boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
-          'i'
+        const htmlSectionMatch = rawEmail.match(
+          new RegExp(`Content-Type:\\s*text/html[^\\r\\n]*([\\s\\S]*?)(?=\\r\\n--${boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'i')
         );
-        const htmlMatch = rawEmail.match(htmlPattern);
-        if (htmlMatch) {
-          emailData.html = htmlMatch[1].trim();
+        if (htmlSectionMatch) {
+          const section = htmlSectionMatch[1];
+          const encodingMatch = section.match(/Content-Transfer-Encoding:\\s*([^\r\n]+)/i);
+          const encoding = encodingMatch ? encodingMatch[1].trim() : '';
+          const bodyStart = section.indexOf('\r\n\r\n');
+          if (bodyStart > -1) {
+            const body = section.slice(bodyStart + 4).trim();
+            emailData.html = decodeContent(body, encoding);
+          }
         }
       }
       
       // If no multipart or extraction failed, try simple body extraction
       if (!emailData.text && !emailData.html) {
+        const encodingMatch = rawEmail.match(/Content-Transfer-Encoding:\\s*([^\r\n]+)/i);
+        const encoding = encodingMatch ? encodingMatch[1].trim() : '';
         const bodyStart = rawEmail.indexOf("\r\n\r\n");
         if (bodyStart > -1) {
-          emailData.text = rawEmail.slice(bodyStart + 4).trim();
+          const body = rawEmail.slice(bodyStart + 4).trim();
+          emailData.text = decodeContent(body, encoding);
         }
       }
     } catch (e) {
