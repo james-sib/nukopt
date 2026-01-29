@@ -665,3 +665,26 @@ Deployed 4 specialized test bots:
 - Rate limiting code deployed but needs production verification
 - **All AI Council security attacks tested and BLOCKED**
 
+
+### Session 7: Additional Security Tests (12:05+ CST)
+
+**HTTP Security Headers:**
+- [x] Server disclosure: cloudflare, x-render-origin-server, x-powered-by: Next.js (minimal)
+- [x] CORS: No access-control headers for evil origins ✅
+- [x] OPTIONS preflight: Standard 204 response ✅
+
+**Hidden Endpoints (all 404):**
+- [x] /api/v1/version, debug, info, health, ready, live, metrics, prometheus, graphql
+
+**Injection Tests:**
+- [x] JSON injection in key value → "Invalid API key" ✅
+- [x] Prototype pollution (__proto__, constructor.prototype) → Ignored ✅
+- [x] Array/numeric type confusion → Handled safely ✅
+- [x] Deep JSON nesting (16 levels) → "Invalid JSON" ✅
+- [x] Emoji in provider → "Unsupported provider" ✅
+- [x] RTL chars in key → "Invalid API key" ✅
+- [x] Request smuggling attempt → Blocked ✅
+
+**Encoding Tests:**
+- [x] Gzip content-encoding → "Invalid JSON" (not decoded) ✅
+- [x] Chunked transfer-encoding → "Invalid JSON" ✅
