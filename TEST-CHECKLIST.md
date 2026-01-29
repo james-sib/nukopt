@@ -341,7 +341,7 @@
 
 ## AI COUNCIL ADDITIONS
 
-*Consulted: GPT-4.1, Claude Sonnet 4, Gemini 2.5 Pro on 2026-01-29*
+*Consulted: GPT-5.2, Claude Opus 4.5, Gemini 2.5 Pro, Grok 4.1 on 2026-01-29*
 
 ### From GPT-4.1 - Security & Data Isolation
 
@@ -411,6 +411,56 @@
 - [ ] **Mailing List Headers** - List-Unsubscribe, List-Id headers
 - [ ] **ARC Headers** - Authenticated Received Chain
 - [ ] **BIMI Headers** - Brand Indicators for Message Identification
+
+### From GPT-5.2 - Link & API Edge Cases
+
+- [ ] **Redirect Chains** - Verification link is shortener that redirects 10+ times
+- [ ] **Redirect Loops** - Link redirects back to itself
+- [ ] **Mixed HTTP/HTTPS Redirects** - http→https→http chain
+- [ ] **IDN/Punycode Homographs** - Lookalike domains in verification links
+- [ ] **Nested URL Encoding** - `https://x/?next=https%3A%2F%2Freal%2F`
+- [ ] **Fragment-only Tokens** - Token in `#token=...` (not sent to server)
+- [ ] **16KB URLs** - Very long verification links, test truncation
+- [ ] **Relative Links** - `<a href="/verify">` with `<base>` tag
+- [ ] **IDOR All Endpoints** - Swap IDs between accounts on every endpoint
+- [ ] **Pagination Consistency** - Fetch pages while messages arrive mid-fetch
+- [ ] **Idempotency Keys** - Retry POST /mailboxes on timeout - duplicates?
+- [ ] **Stale Auth After Key Rotation** - Rotate passport key, old sessions still work?
+- [ ] **Error Data Leaks** - 500 errors exposing OTPs or message content
+
+### From Claude Opus 4.5 - OTP & Infrastructure
+
+- [ ] **Lookalike Characters** - `0` vs `O`, `1` vs `l` vs `I` in OTP
+- [ ] **OTP in Image** - Bank sends OTP as embedded PNG, no OCR
+- [ ] **Multiple OTP Candidates** - "Order #847291" AND "Your code: 847291"
+- [ ] **OTP in PDF Attachment** - Password-protected PDF contains OTP
+- [ ] **Hidden HTML OTP** - `<span style="color:white">123456</span>` on white bg
+- [ ] **Localized OTP Phrasing** - German "Ihr Code lautet: 123456" not matched
+- [ ] **OTP Split Across Elements** - `<span>12</span><span>34</span><span>56</span>`
+- [ ] **RTL OTP** - Arabic email with LTR OTP renders as 654321
+- [ ] **Empty MIME Boundary** - `multipart/mixed; boundary=""` crashes parser
+- [ ] **DKIM Replay Attack** - Valid DKIM on old email replayed
+- [ ] **Mailbox Reuse Collision** - Random string collision gets old emails
+- [ ] **Deletion During SMTP** - RCPT TO accepted, mailbox deleted before DATA
+- [ ] **Resurrection Attack** - Delete mailbox, attacker recreates same address
+- [ ] **DNS Rebinding on Webhook** - URL resolves external during reg, internal when triggered
+- [ ] **TLS Cert Expiry** - Let's Encrypt expires, STARTTLS downgrades
+- [ ] **MX Record TTL** - DNS cache expires during bulk send
+- [ ] **Backpressure Cascade** - Extraction queue backs up, memory exhaustion
+
+### From Grok 4.1 - Abuse Scenarios
+
+- [ ] **Parallel OTP Extraction Race** - Two OTP emails arrive simultaneously, extract API hammered
+- [ ] **Header Forgery for IDOR** - Forge "To:" header to mimic another user's mailbox
+- [ ] **Long-Lived Disposable Squatter** - Keep mailbox alive for weeks, use for bank 2FA
+- [ ] **API Key in Error Logs** - Trigger errors, check if keys appear in public logs
+- [ ] **100-Level MIME Nesting** - Deeply nested MIME with OTP at bottom
+- [ ] **Cross-Agent Mailbox Hijack** - Register with another agent's ID
+- [ ] **OTP Regex Evasion** - Reversed OTP "654321", base64, images
+- [ ] **Passport Revoke Bypass** - Revoke, re-register, reclaim old mailboxes?
+- [ ] **Wildcard Mailbox Abuse** - If "user-*" supported, create "admin-*"
+- [ ] **Timing Attack on Expiry** - Poll every ms, measure response time for presence
+- [ ] **Fake OAuth Provider** - Compromised delegated auth gains full control
 
 ---
 
