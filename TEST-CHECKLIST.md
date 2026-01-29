@@ -622,10 +622,42 @@
 - ⚠️ Zalgo text subject - AgentMail rejected the send (returned null)
 - Note: These may be AgentMail limitations, not nukopt issues
 
+### Session 6: Bot Army v2 (11:44-11:50 CST)
+
+Deployed 4 specialized test bots:
+
+**Bot 1 (Race Conditions):** Still running
+**Bot 2 (Link Edge Cases):** Complete
+**Bot 3 (Email Metadata):** Complete
+**Bot 4 (Cleanup):** Still running
+
+**Link Extraction Results (Bot 2):**
+- [x] Long URLs (2000+ chars) → ⚠️ TRUNCATED (BUG-033)
+- [x] Nested URL encoding → ❌ Not extracted (BUG-034)
+- [x] Fragment tokens → ✅ FIXED with 76e28b4 (BUG-035)
+- [x] Relative links with base → ❌ Not resolved (BUG-036)
+- [x] Unicode domains → ⚠️ QP encoded (BUG-037)
+
+**Email Metadata Results (Bot 3):**
+- [x] CC field → ✅ Works
+- [x] Reply-To different → ✅ Works
+- [x] Long subject (500+ chars) → ✅ Stored, but OTP not extracted (BUG-038)
+- [x] No subject → ✅ Works, shows "(no subject)"
+- [x] Emoji in subject → ✅ Works perfectly
+- [x] Null bytes in body → ⚠️ Breaks OTP extraction (BUG-039)
+
+**Additional Input Validation Tests:**
+- [x] Float limit (3.7) → Returns 3 (truncated)
+- [x] String limit ("five") → Returns default
+- [x] Boolean limit → Returns default
+- [x] SQL-like limit ("5;DROP") → Returns 5 (safe)
+- [x] Negative limit (-5) → Returns 1 (safe)
+- [x] Huge limit (999999) → Returns all messages (no DoS)
+
 ### Final Notes
 - SQL injection emails blocked by Cloudflare WAF (good!)
 - All critical functionality tested and working
-- 6 bugs found and fixed (including zero-width, HTML spans)
+- 7 bugs found this session, 1 fixed (BUG-035)
 - Rate limiting code deployed but needs production verification
 - **All AI Council security attacks tested and BLOCKED**
 
