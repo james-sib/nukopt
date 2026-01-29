@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-// Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
 function getSupabase() {
@@ -12,36 +11,190 @@ function getSupabase() {
   );
 }
 
-// Supported AI providers and their key validation
-const PROVIDERS: Record<string, { prefixes: string[]; validateUrl: string }> = {
+// All supported passport providers
+const PROVIDERS: Record<string, { 
+  prefixes: string[]; 
+  validate: (key: string) => Promise<boolean>;
+  description: string;
+}> = {
+  // AI APIs
   openai: { 
     prefixes: ['sk-', 'sk-proj-'], 
-    validateUrl: 'https://api.openai.com/v1/models' 
+    validate: async (key) => {
+      const res = await fetch('https://api.openai.com/v1/models', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      return res.ok || res.status === 401;
+    },
+    description: 'OpenAI API key'
   },
   anthropic: { 
     prefixes: ['sk-ant-'], 
-    validateUrl: 'https://api.anthropic.com/v1/messages' 
+    validate: async (key) => {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
+      });
+      return res.ok || res.status === 401;
+    },
+    description: 'Anthropic API key'
   },
   openrouter: { 
     prefixes: ['sk-or-'], 
-    validateUrl: 'https://openrouter.ai/api/v1/models' 
+    validate: async (key) => {
+      const res = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      return res.ok || res.status === 401;
+    },
+    description: 'OpenRouter API key'
+  },
+  huggingface: {
+    prefixes: ['hf_'],
+    validate: async (key) => {
+      const res = await fetch('https://huggingface.co/api/whoami-v2', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      return res.ok;
+    },
+    description: 'Hugging Face token'
+  },
+
+  // Developer platforms
+  github: {
+    prefixes: ['ghp_', 'github_pat_'],
+    validate: async (key) => {
+      const res = await fetch('https://api.github.com/user', {
+        headers: { 'Authorization': `Bearer ${key}`, 'User-Agent': 'NukOpt' }
+      });
+      return res.ok;
+    },
+    description: 'GitHub personal access token'
+  },
+  gitlab: {
+    prefixes: ['glpat-'],
+    validate: async (key) => {
+      const res = await fetch('https://gitlab.com/api/v4/user', {
+        headers: { 'PRIVATE-TOKEN': key }
+      });
+      return res.ok;
+    },
+    description: 'GitLab personal access token'
+  },
+
+  // Messaging / Bot platforms
+  discord: {
+    prefixes: [], // Discord bot tokens don't have a consistent prefix
+    validate: async (key) => {
+      // Bot tokens are usually long alphanumeric with dots
+      if (key.length < 50) return false;
+      const res = await fetch('https://discord.com/api/v10/users/@me', {
+        headers: { 'Authorization': `Bot ${key}` }
+      });
+      return res.ok;
+    },
+    description: 'Discord bot token'
+  },
+  telegram: {
+    prefixes: [], // Format: 123456789:ABC-DEF...
+    validate: async (key) => {
+      // Telegram bot tokens: number:alphanumeric
+      if (!/^\d+:[A-Za-z0-9_-]+$/.test(key)) return false;
+      const res = await fetch(`https://api.telegram.org/bot${key}/getMe`);
+      const data = await res.json();
+      return data.ok === true;
+    },
+    description: 'Telegram bot token'
+  },
+  slack: {
+    prefixes: ['xoxb-'],
+    validate: async (key) => {
+      const res = await fetch('https://slack.com/api/auth.test', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      const data = await res.json();
+      return data.ok === true;
+    },
+    description: 'Slack bot token'
+  },
+
+  // Payment (ultimate proof)
+  stripe: {
+    prefixes: ['sk_live_', 'sk_test_', 'rk_live_', 'rk_test_'],
+    validate: async (key) => {
+      const res = await fetch('https://api.stripe.com/v1/balance', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      return res.ok || res.status === 401;
+    },
+    description: 'Stripe API key'
+  },
+
+  // Infrastructure
+  cloudflare: {
+    prefixes: [], // Various formats
+    validate: async (key) => {
+      const res = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      const data = await res.json();
+      return data.success === true;
+    },
+    description: 'Cloudflare API token'
+  },
+  vercel: {
+    prefixes: [],
+    validate: async (key) => {
+      const res = await fetch('https://api.vercel.com/v2/user', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      return res.ok;
+    },
+    description: 'Vercel API token'
+  },
+  render: {
+    prefixes: ['rnd_'],
+    validate: async (key) => {
+      const res = await fetch('https://api.render.com/v1/owners', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      return res.ok;
+    },
+    description: 'Render API key'
+  },
+  supabase: {
+    prefixes: ['sbp_'],
+    validate: async (key) => {
+      // Supabase management API
+      const res = await fetch('https://api.supabase.com/v1/projects', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      return res.ok;
+    },
+    description: 'Supabase management token'
+  },
+  replicate: {
+    prefixes: ['r8_'],
+    validate: async (key) => {
+      const res = await fetch('https://api.replicate.com/v1/account', {
+        headers: { 'Authorization': `Token ${key}` }
+      });
+      return res.ok;
+    },
+    description: 'Replicate API token'
   },
 };
 
 async function validateApiKey(provider: string, key: string): Promise<boolean> {
   const config = PROVIDERS[provider];
   if (!config) return false;
-  if (!config.prefixes.some(p => key.startsWith(p))) return false;
+  
+  // Check prefix if provider has specific prefixes
+  if (config.prefixes.length > 0 && !config.prefixes.some(p => key.startsWith(p))) {
+    return false;
+  }
   
   try {
-    const headers: Record<string, string> = { 'Authorization': `Bearer ${key}` };
-    if (provider === 'anthropic') {
-      headers['x-api-key'] = key;
-      headers['anthropic-version'] = '2023-06-01';
-    }
-    const res = await fetch(config.validateUrl, { headers, method: 'GET' });
-    // 200 = valid, 401 = key format valid but unauthorized (still proves it's a real key format)
-    return res.ok || res.status === 401;
+    return await config.validate(key);
   } catch {
     return false;
   }
@@ -57,22 +210,22 @@ export async function POST(req: NextRequest) {
     
     if (!PROVIDERS[provider]) {
       return NextResponse.json({ 
-        error: `Unsupported provider. Use: ${Object.keys(PROVIDERS).join(', ')}` 
+        error: `Unsupported provider. Supported: ${Object.keys(PROVIDERS).join(', ')}`,
+        providers: Object.entries(PROVIDERS).map(([k, v]) => ({ id: k, description: v.description }))
       }, { status: 400 });
     }
     
-    // Validate the API key format and that it's real
     const isValid = await validateApiKey(provider, key);
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
     }
     
-    // Hash the key (we never store the original)
+    // Hash the key (never store original)
     const keyHash = crypto.createHash('sha256').update(key).digest('hex');
     
     const supabase = getSupabase();
     
-    // Check if account already exists with this key
+    // Check if account already exists
     const { data: existing } = await supabase
       .from('nukopt_accounts')
       .select('api_key')
@@ -86,7 +239,7 @@ export async function POST(req: NextRequest) {
       });
     }
     
-    // Create new account with nukopt API key
+    // Create new account
     const apiKey = 'nk-' + crypto.randomBytes(32).toString('hex');
     
     const { error } = await supabase.from('nukopt_accounts').insert({
@@ -106,4 +259,15 @@ export async function POST(req: NextRequest) {
     console.error('Registration error:', error);
     return NextResponse.json({ error: 'Registration failed' }, { status: 500 });
   }
+}
+
+// GET endpoint to list supported providers
+export async function GET() {
+  return NextResponse.json({
+    providers: Object.entries(PROVIDERS).map(([id, config]) => ({
+      id,
+      description: config.description,
+      prefixes: config.prefixes.length > 0 ? config.prefixes : undefined
+    }))
+  });
 }
