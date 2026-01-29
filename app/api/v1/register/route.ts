@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { encrypt } from '@/lib/crypto';
 
 // Force dynamic rendering - don't try to pre-render at build time
 export const dynamic = 'force-dynamic';
@@ -76,11 +77,13 @@ export async function POST(req: NextRequest) {
     
     // Create new account
     const apiKey = 'nk-' + crypto.randomBytes(32).toString('hex');
+    const encryptedKey = encrypt(key);
     
     const { error } = await supabase.from('nukopt_accounts').insert({
       key_hash: keyHash,
       provider,
       api_key: apiKey,
+      encrypted_key: encryptedKey,
       created_at: new Date().toISOString()
     });
     
