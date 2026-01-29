@@ -230,7 +230,19 @@ export async function POST(req: NextRequest) {
       console.warn('Rate limiting skipped:', rateLimitError);
     }
     
-    const { provider, key } = await req.json();
+    // Parse JSON with proper error handling
+    let body: { provider?: string; key?: string };
+    try {
+      const text = await req.text();
+      if (!text || text.trim() === '') {
+        return NextResponse.json({ error: 'Request body is required' }, { status: 400 });
+      }
+      body = JSON.parse(text);
+    } catch (parseError) {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
+    
+    const { provider, key } = body;
     
     if (!provider || !key) {
       return NextResponse.json({ error: 'Missing provider or key' }, { status: 400 });
@@ -298,4 +310,17 @@ export async function GET() {
       description: config.description
     }))
   });
+}
+
+// Explicitly handle unsupported methods with JSON response
+export async function DELETE() {
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+}
+
+export async function PUT() {
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+}
+
+export async function PATCH() {
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
 }
