@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       .from('nukopt_messages')
       .select('*', { count: 'exact', head: true })
       .eq('mailbox_id', mailbox.id)
-      .gte('received_at', today);
+      .gte('created_at', today);
     
     if ((count || 0) >= 100) {
       return NextResponse.json({ ok: true, status: 'rate_limited' });

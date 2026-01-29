@@ -31,7 +31,7 @@ CREATE TABLE nukopt_messages (
   otp TEXT,                            -- Auto-extracted OTP/verification code
   verification_links TEXT[],           -- Auto-extracted verification URLs
   raw_size INT,
-  received_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes for performance
@@ -39,7 +39,7 @@ CREATE INDEX idx_nukopt_accounts_key ON nukopt_accounts(api_key);
 CREATE INDEX idx_nukopt_mailboxes_account ON nukopt_mailboxes(account_id);
 CREATE INDEX idx_nukopt_mailboxes_local ON nukopt_mailboxes(local_part);
 CREATE INDEX idx_nukopt_messages_mailbox ON nukopt_messages(mailbox_id);
-CREATE INDEX idx_nukopt_messages_received ON nukopt_messages(received_at);
+CREATE INDEX idx_nukopt_messages_created ON nukopt_messages(created_at);
 
 -- Cleanup job: Delete messages older than 7 days
 -- Run via cron or pg_cron:
