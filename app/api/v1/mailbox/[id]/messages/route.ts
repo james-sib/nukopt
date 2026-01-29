@@ -10,9 +10,9 @@ function getSupabase() {
   );
 }
 
-async function verifyAccess(req: NextRequest, mailboxId: string) {
+async function verifyAccess(req: NextRequest, mailboxId: string): Promise<'ok' | 'unauthorized' | 'not_found'> {
   const auth = req.headers.get('authorization');
-  if (!auth?.startsWith('Bearer nk-')) return false;
+  if (!auth?.startsWith('Bearer nk-')) return 'unauthorized';
   
   const supabase = getSupabase();
   
@@ -23,7 +23,7 @@ async function verifyAccess(req: NextRequest, mailboxId: string) {
     .eq('api_key', auth.slice(7))
     .single();
   
-  if (!account) return false;
+  if (!account) return 'unauthorized';
   
   // Verify mailbox belongs to account
   const { data: mailbox } = await supabase
@@ -33,7 +33,7 @@ async function verifyAccess(req: NextRequest, mailboxId: string) {
     .eq('account_id', account.id)
     .single();
   
-  return !!mailbox;
+  return mailbox ? 'ok' : 'not_found';
 }
 
 export async function GET(
@@ -42,8 +42,12 @@ export async function GET(
 ) {
   const { id } = await params;
   
-  if (!await verifyAccess(req, id)) {
+  const status = await verifyAccess(req, id);
+  if (status === 'unauthorized') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (status === 'not_found') {
+    return NextResponse.json({ error: 'Mailbox not found' }, { status: 404 });
   }
   
   const supabase = getSupabase();

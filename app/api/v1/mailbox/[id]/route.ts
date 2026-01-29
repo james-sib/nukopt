@@ -10,9 +10,9 @@ function getSupabase() {
   );
 }
 
-async function verifyAccess(req: NextRequest, mailboxId: string) {
+async function verifyAccess(req: NextRequest, mailboxId: string): Promise<{ status: 'ok' | 'unauthorized' | 'not_found'; account?: any; mailbox?: any }> {
   const auth = req.headers.get('authorization');
-  if (!auth?.startsWith('Bearer nk-')) return null;
+  if (!auth?.startsWith('Bearer nk-')) return { status: 'unauthorized' };
   
   const supabase = getSupabase();
   
@@ -23,7 +23,7 @@ async function verifyAccess(req: NextRequest, mailboxId: string) {
     .eq('api_key', auth.slice(7))
     .single();
   
-  if (!account) return null;
+  if (!account) return { status: 'unauthorized' };
   
   // Verify mailbox belongs to account
   const { data: mailbox } = await supabase
@@ -33,7 +33,9 @@ async function verifyAccess(req: NextRequest, mailboxId: string) {
     .eq('account_id', account.id)
     .single();
   
-  return mailbox ? { account, mailbox } : null;
+  if (!mailbox) return { status: 'not_found', account };
+  
+  return { status: 'ok', account, mailbox };
 }
 
 // GET /api/v1/mailbox/{id} - Get mailbox details
@@ -44,8 +46,11 @@ export async function GET(
   const { id } = await params;
   
   const access = await verifyAccess(req, id);
-  if (!access) {
+  if (access.status === 'unauthorized') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (access.status === 'not_found') {
+    return NextResponse.json({ error: 'Mailbox not found' }, { status: 404 });
   }
   
   return NextResponse.json(access.mailbox);
@@ -59,8 +64,11 @@ export async function DELETE(
   const { id } = await params;
   
   const access = await verifyAccess(req, id);
-  if (!access) {
+  if (access.status === 'unauthorized') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (access.status === 'not_found') {
+    return NextResponse.json({ error: 'Mailbox not found' }, { status: 404 });
   }
   
   const supabase = getSupabase();
