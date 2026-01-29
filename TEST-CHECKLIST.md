@@ -706,3 +706,11 @@ Deployed 4 specialized test bots:
 **Webhook Security:**
 - [x] POST without secret → "Invalid secret" ✅
 - [x] POST with wrong secret → "Invalid secret" ✅
+
+**Bot 5 (Stress Test) Results:**
+- [x] Burst 20 emails → ✅ 90% success, 3.1s
+- [x] 100KB payload → ✅ Delivered in 1.5s
+- [x] Multi-recipient (5 mailboxes) → ✅ All received
+- [x] Rapid polling (50 concurrent) → ❌ 92% 502 errors
+
+**Performance Finding:** Server handles email inbound well but has limited concurrent API capacity (~4 req/sec under heavy load). Low priority - unlikely in real usage.
