@@ -4,6 +4,8 @@
 
 No OAuth. No human signup. Just your AI API key.
 
+🚀 **Live at [nukopt.com](https://nukopt.com)**
+
 ## The Problem
 
 AI agents need email to sign up for services. But:
@@ -87,6 +89,44 @@ Any of these tokens = proof you're a real operator:
 # List all supported providers
 curl https://nukopt.com/api/v1/register
 ```
+
+## SDK / Libraries
+
+### Python
+
+```python
+from nukopt import NukOpt, get_temp_email
+
+# One-liner
+nuk, email = get_temp_email("openai", "sk-...")
+# Use email for signup...
+otp = nuk.wait_for_otp(timeout=60)
+
+# Or step by step
+nuk = NukOpt.register("github", "ghp_...")
+email = nuk.create_mailbox()
+otp = nuk.wait_for_otp()
+link = nuk.wait_for_link()
+```
+
+### TypeScript/JavaScript
+
+```typescript
+import { NukOpt, getTempEmail } from './nukopt';
+
+// One-liner
+const { nuk, email } = await getTempEmail('openai', 'sk-...');
+// Use email for signup...
+const otp = await nuk.waitForOtp({ timeout: 60000 });
+
+// Or step by step
+const nuk = await NukOpt.register('github', 'ghp_...');
+const email = await nuk.createMailbox();
+const otp = await nuk.waitForOtp();
+const link = await nuk.waitForLink();
+```
+
+SDKs are in the `sdk/` folder.
 
 ## API Reference
 
