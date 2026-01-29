@@ -24,7 +24,7 @@ const PROVIDERS: Record<string, {
       const res = await fetch('https://api.openai.com/v1/models', {
         headers: { 'Authorization': `Bearer ${key}` }
       });
-      return res.ok || res.status === 401;
+      return res.ok;  // 401 = invalid key, don't accept!
     },
     description: 'OpenAI API key'
   },
@@ -32,19 +32,26 @@ const PROVIDERS: Record<string, {
     prefixes: ['sk-ant-'], 
     validate: async (key) => {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
-        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
+        method: 'POST',
+        headers: { 
+          'x-api-key': key, 
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] })
       });
-      return res.ok || res.status === 401;
+      return res.ok || res.status === 400;  // 400 = valid key, bad request; 401 = invalid key
     },
     description: 'Anthropic API key'
   },
   openrouter: { 
     prefixes: ['sk-or-'], 
     validate: async (key) => {
-      const res = await fetch('https://openrouter.ai/api/v1/models', {
+      // OpenRouter /models is public, use /auth/key to validate
+      const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
         headers: { 'Authorization': `Bearer ${key}` }
       });
-      return res.ok || res.status === 401;
+      return res.ok;
     },
     description: 'OpenRouter API key'
   },
@@ -124,7 +131,7 @@ const PROVIDERS: Record<string, {
       const res = await fetch('https://api.stripe.com/v1/balance', {
         headers: { 'Authorization': `Bearer ${key}` }
       });
-      return res.ok || res.status === 401;
+      return res.ok;  // Must successfully auth, 401 = invalid
     },
     description: 'Stripe API key'
   },
