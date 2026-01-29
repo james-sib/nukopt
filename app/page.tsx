@@ -35,6 +35,35 @@ export default function Home() {
       </section>
       
       <section className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">How It Works</h2>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg">
+          <div className="text-center p-4">
+            <div className="text-3xl mb-2">🔑</div>
+            <div className="font-semibold">1. Register</div>
+            <div className="text-sm text-gray-500">Use your existing API key</div>
+          </div>
+          <div className="text-2xl text-gray-300 hidden md:block">→</div>
+          <div className="text-center p-4">
+            <div className="text-3xl mb-2">📬</div>
+            <div className="font-semibold">2. Create Mailbox</div>
+            <div className="text-sm text-gray-500">Get xyz@nukopt.com</div>
+          </div>
+          <div className="text-2xl text-gray-300 hidden md:block">→</div>
+          <div className="text-center p-4">
+            <div className="text-3xl mb-2">✉️</div>
+            <div className="font-semibold">3. Receive Email</div>
+            <div className="text-sm text-gray-500">Sign up for services</div>
+          </div>
+          <div className="text-2xl text-gray-300 hidden md:block">→</div>
+          <div className="text-center p-4">
+            <div className="text-3xl mb-2">🔢</div>
+            <div className="font-semibold">4. Get OTP</div>
+            <div className="text-sm text-gray-500">Auto-extracted for you</div>
+          </div>
+        </div>
+      </section>
+      
+      <section className="mb-8">
         <h2 className="text-2xl font-semibold mb-4">Quick Start</h2>
         <pre className="bg-gray-900 text-green-400 p-4 rounded overflow-x-auto text-sm">
 {`# 1. Register with your AI API key
@@ -53,6 +82,52 @@ curl https://nukopt.com/api/v1/mailbox/{id}/messages \\
   -H "Authorization: Bearer nk-..."
 # Returns: {"messages": [{"otp": "123456", ...}]}`}
         </pre>
+      </section>
+      
+      <section className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Code Examples</h2>
+        <div className="space-y-4">
+          <details className="border rounded-lg">
+            <summary className="p-3 cursor-pointer font-semibold bg-gray-50 rounded-t-lg">🐍 Python</summary>
+            <pre className="bg-gray-900 text-green-400 p-4 text-sm overflow-x-auto rounded-b-lg">
+{`import requests
+
+API_KEY = "nk-..."
+BASE = "https://nukopt.com/api/v1"
+headers = {"Authorization": f"Bearer {API_KEY}"}
+
+# Create mailbox
+mailbox = requests.post(f"{BASE}/mailbox", headers=headers).json()
+email = mailbox["email"]  # xyz@nukopt.com
+
+# Poll for OTP
+messages = requests.get(f"{BASE}/mailbox/{mailbox['id']}/messages", headers=headers).json()
+if messages["messages"]:
+    otp = messages["messages"][0]["otp"]  # Auto-extracted!`}
+            </pre>
+          </details>
+          
+          <details className="border rounded-lg">
+            <summary className="p-3 cursor-pointer font-semibold bg-gray-50 rounded-t-lg">📦 Node.js</summary>
+            <pre className="bg-gray-900 text-green-400 p-4 text-sm overflow-x-auto rounded-b-lg">
+{`const API_KEY = "nk-...";
+const BASE = "https://nukopt.com/api/v1";
+const headers = { Authorization: \`Bearer \${API_KEY}\` };
+
+// Create mailbox
+const mailbox = await fetch(\`\${BASE}/mailbox\`, { 
+  method: "POST", headers 
+}).then(r => r.json());
+
+// Poll for OTP
+const { messages } = await fetch(
+  \`\${BASE}/mailbox/\${mailbox.id}/messages\`, { headers }
+).then(r => r.json());
+
+const otp = messages[0]?.otp; // Auto-extracted!`}
+            </pre>
+          </details>
+        </div>
       </section>
       
       <section className="mb-8">
@@ -270,6 +345,10 @@ curl https://nukopt.com/api/v1/feedback \\
         <p>
           <a href="https://github.com/james-sib/nukopt" className="text-blue-600 hover:underline">
             GitHub
+          </a>
+          {" · "}
+          <a href="/openapi.yaml" className="text-blue-600 hover:underline">
+            OpenAPI Spec
           </a>
           {" · "}
           <a href="/api/v1/register" className="text-blue-600 hover:underline">

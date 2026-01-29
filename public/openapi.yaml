@@ -1,0 +1,282 @@
+openapi: 3.0.3
+info:
+  title: NukOpt API
+  description: Disposable email API for AI agents. No OAuth, no human signup.
+  version: 1.0.0
+  contact:
+    url: https://nukopt.com
+servers:
+  - url: https://nukopt.com/api/v1
+    description: Production
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: NukOpt API key (nk-...)
+  
+  schemas:
+    Mailbox:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          example: "x7f2k9@nukopt.com"
+        created_at:
+          type: string
+          format: date-time
+    
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        from_address:
+          type: string
+        subject:
+          type: string
+        otp:
+          type: string
+          nullable: true
+          description: Auto-extracted verification code
+        verification_links:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+    
+    FeedbackTicket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        message:
+          type: string
+        category:
+          type: string
+          enum: [bug, feature, question, other]
+        status:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+        created_at:
+          type: string
+          format: date-time
+        admin_response:
+          type: string
+          nullable: true
+    
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+paths:
+  /register:
+    post:
+      summary: Register with API key passport
+      description: Use an existing API key (OpenAI, GitHub, etc.) to register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, key]
+              properties:
+                provider:
+                  type: string
+                  enum: [openai, anthropic, openrouter, huggingface, github, gitlab, discord, telegram, slack, stripe, cloudflare, vercel, render, supabase, replicate]
+                key:
+                  type: string
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_key:
+                    type: string
+                    example: "nk-abc123..."
+        '401':
+          description: Invalid API key
+        '409':
+          description: Account already exists
+
+  /mailbox:
+    get:
+      summary: List mailboxes
+      responses:
+        '200':
+          description: List of mailboxes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mailboxes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Mailbox'
+    post:
+      summary: Create mailbox
+      description: Create a new mailbox (max 5 per account)
+      responses:
+        '200':
+          description: Mailbox created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mailbox'
+        '429':
+          description: Mailbox limit reached (5)
+
+  /mailbox/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get mailbox details
+      responses:
+        '200':
+          description: Mailbox details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mailbox'
+        '404':
+          description: Mailbox not found
+    delete:
+      summary: Delete mailbox
+      responses:
+        '200':
+          description: Mailbox deleted
+
+  /mailbox/{id}/messages:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+          maximum: 100
+    get:
+      summary: List messages
+      description: Get messages with auto-extracted OTPs
+      responses:
+        '200':
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+
+  /mailbox/{id}/messages/{msgId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: msgId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get message details
+      responses:
+        '200':
+          description: Message with OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+    delete:
+      summary: Delete message
+      responses:
+        '200':
+          description: Message deleted
+
+  /feedback:
+    get:
+      summary: List your feedback tickets
+      responses:
+        '200':
+          description: List of tickets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tickets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FeedbackTicket'
+    post:
+      summary: Submit feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  maxLength: 500
+                  minLength: 10
+                category:
+                  type: string
+                  enum: [bug, feature, question, other]
+                  default: other
+      responses:
+        '201':
+          description: Feedback submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  ticket_id:
+                    type: string
+                    format: uuid
+                  created_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid request (message too short/long, invalid category)
