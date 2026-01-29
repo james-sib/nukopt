@@ -20,6 +20,23 @@ function decodeQuotedPrintable(str: string): string {
     .replace(/=3D/gi, '=');  // Common encoding for =
 }
 
+// Clean MIME boundary artifacts from body text
+function cleanMimeBoundaries(str: string): string {
+  if (!str) return str;
+  return str
+    // Remove MIME boundary lines (--boundary, --boundary--)
+    .replace(/^--[a-zA-Z0-9_=\-\.]+--?\s*$/gm, '')
+    // Remove Content-Type headers that may leak through
+    .replace(/^Content-Type:.*$/gim, '')
+    .replace(/^Content-Transfer-Encoding:.*$/gim, '')
+    .replace(/^Content-Disposition:.*$/gim, '')
+    // Remove MIME part headers
+    .replace(/^MIME-Version:.*$/gim, '')
+    // Clean up multiple consecutive newlines
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 // Extract verification codes, OTPs, and links from email
 function extractVerification(text: string, html: string) {
   const result: { otp?: string; links: string[] } = { links: [] };
@@ -165,15 +182,15 @@ export async function POST(req: NextRequest) {
     // Extract verification info
     const verification = extractVerification(text, html);
     
-    // Store message
+    // Store message (clean MIME artifacts)
     const { error } = await supabase
       .from('nukopt_messages')
       .insert({
         mailbox_id: mailbox.id,
         from_address: from,
         subject,
-        text_body: text.substring(0, 50000), // Limit size
-        html_body: html.substring(0, 100000),
+        text_body: cleanMimeBoundaries(text).substring(0, 50000), // Limit size
+        html_body: cleanMimeBoundaries(html).substring(0, 100000),
         otp: verification.otp,
         verification_links: verification.links,
         raw_size: rawEmail.length
