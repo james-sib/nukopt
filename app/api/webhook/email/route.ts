@@ -37,6 +37,43 @@ function cleanMimeBoundaries(str: string): string {
     .trim();
 }
 
+// Strip invisible/zero-width characters that can hide between OTP digits
+function stripInvisibleChars(str: string): string {
+  if (!str) return str;
+  return str
+    // Zero-width chars: ZWSP, ZWNJ, ZWJ, Word Joiner, etc.
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    // Other invisible formatting chars
+    .replace(/[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E]/g, '')
+    // Variation selectors
+    .replace(/[\uFE00-\uFE0F]/g, '');
+}
+
+// Convert HTML to plain text for OTP extraction
+function htmlToText(html: string): string {
+  if (!html) return '';
+  return html
+    // Remove script/style contents
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    // Remove HTML comments
+    .replace(/<!--[\s\S]*?-->/g, '')
+    // Replace block elements with newlines
+    .replace(/<\/(p|div|br|tr|li|h[1-6])>/gi, '\n')
+    // Remove all remaining tags
+    .replace(/<[^>]+>/g, ' ')
+    // Decode common HTML entities
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)))
+    // Normalize whitespace
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Extract verification codes, OTPs, and links from email
 function extractVerification(text: string, html: string) {
   const result: { otp?: string; links: string[] } = { links: [] };
@@ -69,22 +106,25 @@ function extractVerification(text: string, html: string) {
   // Dedupe links
   result.links = [...new Set(result.links)];
   
-  // NOW decode for OTP extraction (OTPs benefit from QP decoding for accented text)
-  const decodedText = decodeQuotedPrintable(text || '');
-  const decodedHtml = decodeQuotedPrintable(html || '');
+  // Prepare text for OTP extraction:
+  // 1. Decode quoted-printable
+  // 2. Convert HTML to plain text (handles <span>12</span><span>34</span>)
+  // 3. Strip invisible characters (zero-width spaces between digits)
+  const decodedText = stripInvisibleChars(decodeQuotedPrintable(text || ''));
+  const decodedHtml = stripInvisibleChars(htmlToText(decodeQuotedPrintable(html || '')));
   const combined = decodedText + ' ' + decodedHtml;
   
-  // OTP extraction - prioritized patterns (first match wins)
-  // Priority 1: Labeled codes with flexible spacing (most reliable)
+  // OTP extraction - prioritized patterns supporting 4-8 digits
+  // Priority 1: Labeled codes (most reliable)
   const labeledPatterns = [
-    /(?:code|verification|otp|pin)[\s:]+(?:is\s+)?(\d{6})\b/gi,  // "code is 123456" or "code: 123456"
-    /(?:code|verification|otp|pin)[\s:]+(?:is\s+)?(\d{4})\b/gi,  // "code is 1234"
-    /\b(\d{6})\s+(?:is\s+)?(?:your|the)\s+(?:code|verification|otp)/gi,  // "123456 is your code"
+    /(?:code|verification|otp|pin|security)[\s:]+(?:is\s+)?(\d{4,8})\b/gi,
+    /\b[Gg]-?(\d{6})\b/g,  // Google-style "G-123456"
+    /\b(\d{4,8})\s+(?:is\s+)?(?:your|the)\s+(?:code|verification|otp)/gi,
   ];
   
   // Try labeled patterns on combined text+html
   for (const pattern of labeledPatterns) {
-    pattern.lastIndex = 0; // Reset regex state
+    pattern.lastIndex = 0;
     const match = pattern.exec(combined);
     if (match) {
       result.otp = match[1];
@@ -92,12 +132,30 @@ function extractVerification(text: string, html: string) {
     }
   }
   
+  // Also try to extract OTP from URL query params (code=XXXXXX)
+  if (!result.otp) {
+    for (const link of result.links) {
+      const codeMatch = link.match(/[?&]code=(\d{4,8})(?:&|$)/);
+      if (codeMatch) {
+        result.otp = codeMatch[1];
+        break;
+      }
+    }
+  }
+  
   // If no labeled match, try standalone 6-digit first (prefer text over html)
   if (!result.otp) {
     const sixDigitMatches = decodedText.match(/\b(\d{6})\b/g) || decodedHtml.match(/\b(\d{6})\b/g);
     if (sixDigitMatches && sixDigitMatches.length >= 1) {
-      // Take first 6-digit match
       result.otp = sixDigitMatches[0];
+    }
+  }
+  
+  // Try 5-digit (some services use this)
+  if (!result.otp) {
+    const fiveDigitMatches = decodedText.match(/\b(\d{5})\b/g);
+    if (fiveDigitMatches && fiveDigitMatches.length === 1) {
+      result.otp = fiveDigitMatches[0];
     }
   }
   
@@ -105,7 +163,6 @@ function extractVerification(text: string, html: string) {
   if (!result.otp) {
     const fourDigitMatches = decodedText.match(/\b(\d{4})\b/g);
     if (fourDigitMatches && fourDigitMatches.length === 1) {
-      // Only if single 4-digit match (avoid false positives like years)
       result.otp = fourDigitMatches[0];
     }
   }
