@@ -49,9 +49,9 @@ export async function GET(
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('nukopt_messages')
-    .select('id, from_address, subject, otp, verification_links, created_at')
+    .select('id, from_address, subject, otp, verification_links, received_at')
     .eq('mailbox_id', id)
-    .order('created_at', { ascending: false })
+    .order('received_at', { ascending: false })
     .limit(50);
   
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

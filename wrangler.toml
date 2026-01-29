@@ -1,0 +1,8 @@
+name = "nukopt-email-webhook"
+account_id = "224ea0558a6a8067b022c8ed21e6a14e"
+main = "cloudflare-email-worker.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+WEBHOOK_URL = "https://nukopt.onrender.com/api/webhook/email"
+WEBHOOK_SECRET = "nukopt_webhook_0af6427517d75214f9ec9f3a01c5cb8b"

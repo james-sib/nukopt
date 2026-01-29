@@ -31,19 +31,19 @@ export default {
       // For full MIME parsing, would need a library
       const textMatch = rawEmail.match(/Content-Type: text\/plain[\s\S]*?\r\n\r\n([\s\S]*?)(?:\r\n--|\r\n\r\n)/i);
       if (textMatch) {
-        emailData.textBody = textMatch[1].trim();
+        emailData.text = textMatch[1].trim();
       }
       
       const htmlMatch = rawEmail.match(/Content-Type: text\/html[\s\S]*?\r\n\r\n([\s\S]*?)(?:\r\n--|\r\n\r\n)/i);
       if (htmlMatch) {
-        emailData.htmlBody = htmlMatch[1].trim();
+        emailData.html = htmlMatch[1].trim();
       }
       
       // If no multipart, try to get plain body
-      if (!emailData.textBody && !emailData.htmlBody) {
+      if (!emailData.text && !emailData.html) {
         const bodyStart = rawEmail.indexOf("\r\n\r\n");
         if (bodyStart > -1) {
-          emailData.textBody = rawEmail.slice(bodyStart + 4).trim();
+          emailData.text = rawEmail.slice(bodyStart + 4).trim();
         }
       }
     } catch (e) {
