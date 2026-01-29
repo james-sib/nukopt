@@ -15,21 +15,44 @@ function getSupabase() {
 function extractVerification(text: string, html: string) {
   const result: { otp?: string; links: string[] } = { links: [] };
   
-  // Common OTP patterns (6 digits, 4 digits, alphanumeric)
-  const otpPatterns = [
-    /\b(\d{6})\b/g,                           // 6 digits
-    /\b(\d{4})\b/g,                           // 4 digits  
-    /code[:\s]+([A-Z0-9]{4,8})/gi,           // "code: XXXX"
-    /verification[:\s]+([A-Z0-9]{4,8})/gi,   // "verification: XXXX"
-    /OTP[:\s]+([A-Z0-9]{4,8})/gi,            // "OTP: XXXX"
+  // OTP extraction - prioritized patterns (first match wins)
+  // Priority 1: Labeled codes (most reliable)
+  const labeledPatterns = [
+    /(?:code|verification|otp|pin)[:\s]+(\d{6})\b/gi,      // "code: 123456"
+    /(?:code|verification|otp|pin)[:\s]+(\d{4})\b/gi,      // "code: 1234"
+    /(?:code|verification|otp|pin)[:\s]+([A-Z0-9]{4,8})\b/gi, // "code: ABC123"
   ];
   
-  for (const pattern of otpPatterns) {
-    const matches = text.match(pattern);
-    if (matches && matches.length === 1) {
-      // Single match is likely the OTP
-      result.otp = matches[0].replace(/\D/g, '') || matches[0];
+  // Priority 2: Standalone numeric codes
+  const numericPatterns = [
+    /\b(\d{6})\b/g,   // 6-digit (most common OTP length)
+    /\b(\d{4})\b/g,   // 4-digit PIN
+  ];
+  
+  // Try labeled patterns first
+  for (const pattern of labeledPatterns) {
+    const match = pattern.exec(text);
+    if (match) {
+      result.otp = match[1];
       break;
+    }
+  }
+  
+  // If no labeled match, try standalone 6-digit first
+  if (!result.otp) {
+    const sixDigitMatches = text.match(/\b(\d{6})\b/g);
+    if (sixDigitMatches && sixDigitMatches.length >= 1) {
+      // Take first 6-digit match
+      result.otp = sixDigitMatches[0];
+    }
+  }
+  
+  // If still no match, try 4-digit
+  if (!result.otp) {
+    const fourDigitMatches = text.match(/\b(\d{4})\b/g);
+    if (fourDigitMatches && fourDigitMatches.length === 1) {
+      // Only if single 4-digit match (avoid false positives like years)
+      result.otp = fourDigitMatches[0];
     }
   }
   
