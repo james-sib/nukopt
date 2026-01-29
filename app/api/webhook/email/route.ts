@@ -14,10 +14,28 @@ function getSupabase() {
 // Decode quoted-printable encoding (=XX hex and =\r\n line continuations)
 function decodeQuotedPrintable(str: string): string {
   if (!str) return str;
-  return str
-    .replace(/=\r?\n/g, '')  // Remove soft line breaks
-    .replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/=3D/gi, '=');  // Common encoding for =
+  
+  // Remove soft line breaks
+  str = str.replace(/=\r?\n/g, '');
+  
+  // Find all =XX sequences and convert to bytes, then decode as UTF-8
+  const decoded = str.replace(/(?:=[0-9A-Fa-f]{2})+/g, (match) => {
+    // Convert sequence of =XX to byte array
+    const bytes = [];
+    for (let i = 0; i < match.length; i += 3) {
+      const hex = match.substring(i + 1, i + 3);
+      bytes.push(parseInt(hex, 16));
+    }
+    // Decode as UTF-8
+    try {
+      return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
+    } catch {
+      // If UTF-8 decode fails, fall back to latin1
+      return bytes.map(b => String.fromCharCode(b)).join('');
+    }
+  });
+  
+  return decoded;
 }
 
 // Clean MIME boundary artifacts from body text
@@ -110,7 +128,11 @@ function extractVerification(text: string, html: string) {
   // 1. Decode quoted-printable
   // 2. Convert HTML to plain text (handles <span>12</span><span>34</span>)
   // 3. Strip invisible characters (zero-width spaces between digits)
-  const decodedText = stripInvisibleChars(decodeQuotedPrintable(text || ''));
+  let decodedText = stripInvisibleChars(decodeQuotedPrintable(text || ''));
+  // If text contains HTML tags, also parse it as HTML (some emails put HTML in text field)
+  if (/<[^>]+>/.test(decodedText)) {
+    decodedText = stripInvisibleChars(htmlToText(decodedText));
+  }
   const decodedHtml = stripInvisibleChars(htmlToText(decodeQuotedPrintable(html || '')));
   const combined = decodedText + ' ' + decodedHtml;
   
