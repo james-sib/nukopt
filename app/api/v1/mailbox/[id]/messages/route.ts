@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { apiLimiter } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
+
+async function checkRateLimit(req: NextRequest): Promise<NextResponse | null> {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+  try {
+    const { success } = await apiLimiter.limit(ip);
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many requests', retryAfter: 60 },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      );
+    }
+  } catch (e) {
+    console.warn('Rate limiting error:', e);
+  }
+  return null;
+}
 
 function getSupabase() {
   return createClient(
@@ -40,6 +57,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const rateLimitResponse = await checkRateLimit(req);
+  if (rateLimitResponse) return rateLimitResponse;
+  
   const { id } = await params;
   
   const status = await verifyAccess(req, id);
