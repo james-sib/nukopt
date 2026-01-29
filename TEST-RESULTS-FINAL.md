@@ -301,3 +301,21 @@ Should decode before extracting links.
 - ✅ API key disclosure fixed
 - ✅ Rate limiting (pending Upstash env vars)
 
+
+---
+
+## Render Env Vars Status (2026-01-29 10:22 CST)
+
+**Existing:**
+- ENCRYPTION_KEY ✅
+- PORT ✅
+- SUPABASE_ANON_KEY ✅
+- SUPABASE_SERVICE_KEY ✅
+- SUPABASE_URL ✅
+- UPSTASH_REDIS_TOKEN ⚠️ (needs rename)
+- WEBHOOK_SECRET ✅
+
+**Needed for rate limiting:**
+- [ ] Rename UPSTASH_REDIS_TOKEN → UPSTASH_REDIS_REST_TOKEN
+- [ ] Add UPSTASH_REDIS_REST_URL = https://talented-bluegill-18262.upstash.io
+

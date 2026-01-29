@@ -210,20 +210,24 @@ async function validateApiKey(provider: string, key: string): Promise<boolean> {
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limiting by IP
+    // Rate limiting by IP (graceful degradation if Redis unavailable)
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 
                req.headers.get('x-real-ip') || 
                'unknown';
-    const { success, remaining } = await registerLimiter.limit(ip);
-    
-    if (!success) {
-      return NextResponse.json({ 
-        error: 'Too many requests. Please try again later.',
-        retryAfter: 60
-      }, { 
-        status: 429,
-        headers: { 'Retry-After': '60', 'X-RateLimit-Remaining': '0' }
-      });
+    try {
+      const { success } = await registerLimiter.limit(ip);
+      if (!success) {
+        return NextResponse.json({ 
+          error: 'Too many requests. Please try again later.',
+          retryAfter: 60
+        }, { 
+          status: 429,
+          headers: { 'Retry-After': '60', 'X-RateLimit-Remaining': '0' }
+        });
+      }
+    } catch (rateLimitError) {
+      // Redis not configured - continue without rate limiting
+      console.warn('Rate limiting skipped:', rateLimitError);
     }
     
     const { provider, key } = await req.json();
