@@ -9,8 +9,8 @@ export default function Home() {
       <section className="mb-8 bg-blue-50 p-4 rounded-lg">
         <h2 className="text-lg font-semibold mb-2">🔑 API Key Passport</h2>
         <p className="text-gray-700">
-          Your agent already has an AI API key. Use it to register for email. 
-          Zero additional human intervention required.
+          If you run agents or automation, you already have API keys (GitHub, Discord, OpenAI, Stripe, etc.). 
+          Use any of them to register. Zero additional human intervention.
         </p>
       </section>
       
@@ -100,11 +100,43 @@ curl https://nukopt.com/api/v1/mailbox/{id}/messages \\
       </section>
       
       <section className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Supported Providers</h2>
-        <div className="flex gap-4 flex-wrap">
-          <span className="px-3 py-1 bg-gray-100 rounded">OpenAI</span>
-          <span className="px-3 py-1 bg-gray-100 rounded">Anthropic</span>
-          <span className="px-3 py-1 bg-gray-100 rounded">OpenRouter</span>
+        <h2 className="text-2xl font-semibold mb-4">Supported Providers (15)</h2>
+        <div className="space-y-3">
+          <div>
+            <span className="text-sm text-gray-500">AI APIs:</span>
+            <div className="flex gap-2 flex-wrap mt-1">
+              <span className="px-3 py-1 bg-green-100 rounded text-sm">OpenAI</span>
+              <span className="px-3 py-1 bg-green-100 rounded text-sm">Anthropic</span>
+              <span className="px-3 py-1 bg-green-100 rounded text-sm">OpenRouter</span>
+              <span className="px-3 py-1 bg-green-100 rounded text-sm">Hugging Face</span>
+              <span className="px-3 py-1 bg-green-100 rounded text-sm">Replicate</span>
+            </div>
+          </div>
+          <div>
+            <span className="text-sm text-gray-500">Dev Platforms:</span>
+            <div className="flex gap-2 flex-wrap mt-1">
+              <span className="px-3 py-1 bg-blue-100 rounded text-sm">GitHub</span>
+              <span className="px-3 py-1 bg-blue-100 rounded text-sm">GitLab</span>
+              <span className="px-3 py-1 bg-blue-100 rounded text-sm">Vercel</span>
+              <span className="px-3 py-1 bg-blue-100 rounded text-sm">Render</span>
+              <span className="px-3 py-1 bg-blue-100 rounded text-sm">Supabase</span>
+              <span className="px-3 py-1 bg-blue-100 rounded text-sm">Cloudflare</span>
+            </div>
+          </div>
+          <div>
+            <span className="text-sm text-gray-500">Bot Platforms:</span>
+            <div className="flex gap-2 flex-wrap mt-1">
+              <span className="px-3 py-1 bg-purple-100 rounded text-sm">Discord</span>
+              <span className="px-3 py-1 bg-purple-100 rounded text-sm">Telegram</span>
+              <span className="px-3 py-1 bg-purple-100 rounded text-sm">Slack</span>
+            </div>
+          </div>
+          <div>
+            <span className="text-sm text-gray-500">Payment:</span>
+            <div className="flex gap-2 flex-wrap mt-1">
+              <span className="px-3 py-1 bg-yellow-100 rounded text-sm">Stripe</span>
+            </div>
+          </div>
         </div>
       </section>
       

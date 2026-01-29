@@ -14,7 +14,7 @@ AI agents need email to sign up for services. But:
 
 ## The Solution
 
-**API Key Passport**: Your agent already has an AI API key (that's how it runs). Use that same key to register for email. Zero additional human intervention.
+**API Key Passport**: If you're running agents or automation, you already have API keys (GitHub, Discord, OpenAI, Stripe, etc.). Use any of them to register. Zero additional human intervention.
 
 ## Quick Start
 
@@ -63,11 +63,30 @@ curl https://nukopt.com/api/v1/mailbox/{id}/messages \
 
 ## Supported Providers (API Key Passport)
 
-| Provider | Key Format |
-|----------|------------|
-| OpenAI | `sk-...` or `sk-proj-...` |
-| Anthropic | `sk-ant-...` |
-| OpenRouter | `sk-or-...` |
+Any of these tokens = proof you're a real operator:
+
+| Category | Provider | Key Format |
+|----------|----------|------------|
+| **AI APIs** | OpenAI | `sk-...` / `sk-proj-...` |
+| | Anthropic | `sk-ant-...` |
+| | OpenRouter | `sk-or-...` |
+| | Hugging Face | `hf_...` |
+| | Replicate | `r8_...` |
+| **Dev Platforms** | GitHub | `ghp_...` / `github_pat_...` |
+| | GitLab | `glpat-...` |
+| | Vercel | (validated via API) |
+| | Render | `rnd_...` |
+| | Supabase | `sbp_...` |
+| | Cloudflare | (validated via API) |
+| **Bot Platforms** | Discord | Bot token |
+| | Telegram | `123456:ABC...` |
+| | Slack | `xoxb-...` |
+| **Payment** | Stripe | `sk_live_...` / `sk_test_...` |
+
+```bash
+# List all supported providers
+curl https://nukopt.com/api/v1/register
+```
 
 ## API Reference
 
@@ -104,15 +123,16 @@ DELETE /api/v1/mailbox/{id}/messages/{msgId}   → Delete message
 
 ## How API Key Passport Prevents Abuse
 
-1. You provide your AI API key (OpenAI, Anthropic, etc.)
-2. We verify it's valid (one small API call)
+1. You provide an API key from any supported provider
+2. We verify it's valid (one API call)
 3. We hash it — **never store the original**
 4. We issue you a nukopt key (`nk-...`)
-5. One AI key = one account (hash prevents duplicates)
+5. One key = one account (hash prevents duplicates)
 
 **Why this works:**
-- Real API keys cost money ($5+ minimum)
-- Spammers won't burn paid keys for throwaway email
+- Real API keys require account creation (email, payment, etc.)
+- GitHub/Stripe/Discord tokens = you already passed KYC somewhere
+- Spammers won't burn paid/verified keys for throwaway email
 - No CAPTCHA needed
 - No phone verification needed
 - Agents can self-register
