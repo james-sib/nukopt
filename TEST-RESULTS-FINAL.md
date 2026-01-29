@@ -119,3 +119,33 @@ supabase/migrations/               - Added race condition fix
 ---
 
 Generated: 2026-01-29 09:45 CST
+
+---
+
+## UPDATE: Race Condition FIXED (2026-01-29 09:55 CST)
+
+Added BEFORE INSERT trigger to enforce mailbox limit at database level:
+
+```sql
+CREATE OR REPLACE FUNCTION check_mailbox_limit_before_insert() 
+RETURNS TRIGGER AS $$ 
+BEGIN 
+  IF (SELECT COUNT(*) FROM nukopt_mailboxes WHERE account_id = NEW.account_id) >= 5 THEN 
+    RAISE EXCEPTION 'Mailbox limit (5) exceeded'; 
+  END IF; 
+  RETURN NEW; 
+END; 
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_mailbox_limit 
+BEFORE INSERT ON nukopt_mailboxes 
+FOR EACH ROW 
+EXECUTE FUNCTION check_mailbox_limit_before_insert();
+```
+
+**Test Result:**
+- 10 concurrent requests
+- 5 mailboxes created ✅
+- 5 requests properly rejected ✅
+
+**All critical bugs now fixed!**

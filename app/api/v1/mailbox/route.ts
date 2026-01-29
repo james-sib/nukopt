@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ mailboxes: data });
 }
 
-// Create mailbox with optimistic concurrency control
+// Create mailbox - DB trigger enforces 5 limit
 export async function POST(req: NextRequest) {
   const account = await getAccount(req);
   if (!account) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -50,17 +50,6 @@ export async function POST(req: NextRequest) {
   const localPart = crypto.randomBytes(6).toString('hex');
   const email = `${localPart}@nukopt.com`;
   
-  // Check count first (optimistic check)
-  const { count: preCount } = await supabase
-    .from('nukopt_mailboxes')
-    .select('*', { count: 'exact', head: true })
-    .eq('account_id', account.id);
-  
-  if ((preCount || 0) >= 5) {
-    return NextResponse.json({ error: 'Mailbox limit reached (5)' }, { status: 429 });
-  }
-  
-  // Attempt insert
   const { data, error } = await supabase
     .from('nukopt_mailboxes')
     .insert({
@@ -71,18 +60,12 @@ export async function POST(req: NextRequest) {
     .select()
     .single();
   
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  
-  // Post-insert validation: if over limit, delete and return error
-  const { count: postCount } = await supabase
-    .from('nukopt_mailboxes')
-    .select('*', { count: 'exact', head: true })
-    .eq('account_id', account.id);
-  
-  if ((postCount || 0) > 5) {
-    // Race condition occurred - delete the one we just created
-    await supabase.from('nukopt_mailboxes').delete().eq('id', data.id);
-    return NextResponse.json({ error: 'Mailbox limit reached (5)' }, { status: 429 });
+  if (error) {
+    // DB trigger raises exception if limit exceeded
+    if (error.message.includes('limit')) {
+      return NextResponse.json({ error: 'Mailbox limit reached (5)' }, { status: 429 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
   
   return NextResponse.json({ id: data.id, email: data.email });
