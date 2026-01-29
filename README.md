@@ -100,8 +100,8 @@ WEBHOOK_SECRET=nukopt_webhook_...
 
 - **Framework:** Next.js 14
 - **Database:** Supabase (PostgreSQL)
-- **Email Receiving:** Cloudflare Email Routing
-- **Hosting:** Vercel
+- **Email Receiving:** Cloudflare Email Routing (pending setup)
+- **Hosting:** Render (https://nukopt.onrender.com)
 
 ## License
 
