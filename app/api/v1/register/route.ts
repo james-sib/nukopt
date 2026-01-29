@@ -13,16 +13,16 @@ function getSupabase() {
 }
 
 // Supported AI providers and their key validation
-const PROVIDERS: Record<string, { prefix: string; validateUrl: string }> = {
-  openai: { prefix: 'sk-', validateUrl: 'https://api.openai.com/v1/models' },
-  anthropic: { prefix: 'sk-ant-', validateUrl: 'https://api.anthropic.com/v1/messages' },
-  openrouter: { prefix: 'sk-or-', validateUrl: 'https://openrouter.ai/api/v1/models' },
+const PROVIDERS: Record<string, { prefixes: string[]; validateUrl: string }> = {
+  openai: { prefixes: ['sk-', 'sk-proj-'], validateUrl: 'https://api.openai.com/v1/models' },
+  anthropic: { prefixes: ['sk-ant-'], validateUrl: 'https://api.anthropic.com/v1/messages' },
+  openrouter: { prefixes: ['sk-or-'], validateUrl: 'https://openrouter.ai/api/v1/models' },
 };
 
 async function validateApiKey(provider: string, key: string): Promise<boolean> {
   const config = PROVIDERS[provider];
   if (!config) return false;
-  if (!key.startsWith(config.prefix)) return false;
+  if (!config.prefixes.some(p => key.startsWith(p))) return false;
   
   try {
     const headers: Record<string, string> = { 'Authorization': `Bearer ${key}` };
