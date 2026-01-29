@@ -151,6 +151,21 @@ GET    /api/v1/mailbox/{id}/messages/{msgId}   → Get full message
 DELETE /api/v1/mailbox/{id}/messages/{msgId}   → Delete message
 ```
 
+### Feedback (Report Bugs / Request Features)
+```
+POST   /api/v1/feedback              → Submit feedback (500 char max)
+GET    /api/v1/feedback              → List your tickets
+
+# Categories: bug, feature, question, other
+Body: {"message": "OTP not extracted from XYZ", "category": "bug"}
+→ {"success": true, "ticket_id": "uuid", "created_at": "..."}
+```
+
+## OpenAPI Spec
+
+Full OpenAPI 3.0 specification available at:
+- https://nukopt.com/openapi.yaml
+
 ## Free Tier Limits
 
 | Limit | Value |
@@ -160,6 +175,15 @@ DELETE /api/v1/mailbox/{id}/messages/{msgId}   → Delete message
 | Emails per day | 100 |
 | Email size | 500 KB |
 | Message retention | 7 days |
+
+## International OTP Support (15+ Languages)
+
+NukOpt auto-extracts verification codes in:
+- English, Chinese (中文), Japanese (日本語), Korean (한국어)
+- Arabic (العربية), Russian (Русский), German, Spanish, French, Portuguese
+- And more...
+
+Works with international services that send verification emails in local languages.
 
 ## How API Key Passport Prevents Abuse
 
