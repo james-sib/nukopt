@@ -27,19 +27,34 @@ export default {
       const rawEmail = await new Response(message.raw).text();
       emailData.raw = rawEmail;
       
-      // Try to extract text content (simple approach)
-      // For full MIME parsing, would need a library
-      const textMatch = rawEmail.match(/Content-Type: text\/plain[\s\S]*?\r\n\r\n([\s\S]*?)(?:\r\n--|\r\n\r\n)/i);
-      if (textMatch) {
-        emailData.text = textMatch[1].trim();
+      // Extract boundary from Content-Type header if multipart
+      const boundaryMatch = rawEmail.match(/boundary="?([^"\r\n]+)"?/i);
+      const boundary = boundaryMatch ? boundaryMatch[1] : null;
+      
+      // Try to extract text content
+      if (boundary) {
+        // Multipart: find text/plain section up to next boundary
+        const textPattern = new RegExp(
+          `Content-Type:\\s*text/plain[^\\r\\n]*\\r\\n(?:[^\\r\\n]+\\r\\n)*\\r\\n([\\s\\S]*?)(?=\\r\\n--${boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
+          'i'
+        );
+        const textMatch = rawEmail.match(textPattern);
+        if (textMatch) {
+          emailData.text = textMatch[1].trim();
+        }
+        
+        // Find HTML section
+        const htmlPattern = new RegExp(
+          `Content-Type:\\s*text/html[^\\r\\n]*\\r\\n(?:[^\\r\\n]+\\r\\n)*\\r\\n([\\s\\S]*?)(?=\\r\\n--${boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
+          'i'
+        );
+        const htmlMatch = rawEmail.match(htmlPattern);
+        if (htmlMatch) {
+          emailData.html = htmlMatch[1].trim();
+        }
       }
       
-      const htmlMatch = rawEmail.match(/Content-Type: text\/html[\s\S]*?\r\n\r\n([\s\S]*?)(?:\r\n--|\r\n\r\n)/i);
-      if (htmlMatch) {
-        emailData.html = htmlMatch[1].trim();
-      }
-      
-      // If no multipart, try to get plain body
+      // If no multipart or extraction failed, try simple body extraction
       if (!emailData.text && !emailData.html) {
         const bodyStart = rawEmail.indexOf("\r\n\r\n");
         if (bodyStart > -1) {
