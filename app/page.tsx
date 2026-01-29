@@ -3,7 +3,7 @@ export default function Home() {
     <main className="min-h-screen p-8 max-w-4xl mx-auto">
       <h1 className="text-4xl font-bold mb-2">nukopt.com</h1>
       <p className="text-xl text-gray-600 mb-8">
-        Email for AI Agents — No OAuth, No Human Signup
+        Disposable Email for AI Agents — No OAuth, No Human Signup
       </p>
       
       <section className="mb-8 bg-blue-50 p-4 rounded-lg">
@@ -26,11 +26,12 @@ curl -X POST https://nukopt.com/api/v1/register \\
 # 2. Create a mailbox
 curl -X POST https://nukopt.com/api/v1/mailbox \\
   -H "Authorization: Bearer nk-..."
-# Returns: {"email": "x7f2k9@nukopt.com"}
+# Returns: {"id": "uuid", "email": "x7f2k9@nukopt.com"}
 
 # 3. Check for emails (with auto-extracted OTPs!)
 curl https://nukopt.com/api/v1/mailbox/{id}/messages \\
-  -H "Authorization: Bearer nk-..."`}
+  -H "Authorization: Bearer nk-..."
+# Returns: {"messages": [{"otp": "123456", ...}]}`}
         </pre>
       </section>
       
@@ -52,10 +53,10 @@ curl https://nukopt.com/api/v1/mailbox/{id}/messages \\
             </p>
           </div>
           <div className="border rounded p-4">
-            <h3 className="font-semibold mb-2">🔍 Auto OTP Extraction</h3>
+            <h3 className="font-semibold mb-2">🔍 Smart OTP Extraction</h3>
             <p className="text-gray-600 text-sm">
-              We parse verification codes and confirmation links automatically. 
-              No regex needed.
+              Auto-extracts verification codes in 15+ languages including 
+              English, Chinese, Japanese, Korean, Arabic, Russian, and more.
             </p>
           </div>
           <div className="border rounded p-4">
@@ -68,35 +69,75 @@ curl https://nukopt.com/api/v1/mailbox/{id}/messages \\
         </div>
       </section>
       
+      <section className="mb-8 bg-green-50 p-4 rounded-lg">
+        <h2 className="text-lg font-semibold mb-2">✅ Works With Major Services</h2>
+        <p className="text-gray-700">
+          Tested and verified with Linear, Vercel, Railway, PlanetScale, and more. 
+          Not on disposable email blocklists.
+        </p>
+      </section>
+      
       <section className="mb-8">
         <h2 className="text-2xl font-semibold mb-4">API Reference</h2>
         <div className="space-y-2 font-mono text-sm">
+          <p className="text-gray-500 text-xs mb-2">Authentication: Bearer nk-... header on all endpoints except register</p>
           <div className="flex gap-2">
-            <span className="text-blue-600 w-16">POST</span>
+            <span className="text-blue-600 w-20">POST</span>
             <span>/api/v1/register</span>
             <span className="text-gray-500">— Register with AI API key</span>
           </div>
           <div className="flex gap-2">
-            <span className="text-blue-600 w-16">POST</span>
+            <span className="text-blue-600 w-20">POST</span>
             <span>/api/v1/mailbox</span>
-            <span className="text-gray-500">— Create mailbox</span>
+            <span className="text-gray-500">— Create mailbox (max 5)</span>
           </div>
           <div className="flex gap-2">
-            <span className="text-green-600 w-16">GET</span>
+            <span className="text-green-600 w-20">GET</span>
             <span>/api/v1/mailbox</span>
-            <span className="text-gray-500">— List mailboxes</span>
+            <span className="text-gray-500">— List your mailboxes</span>
           </div>
           <div className="flex gap-2">
-            <span className="text-green-600 w-16">GET</span>
+            <span className="text-green-600 w-20">GET</span>
+            <span>/api/v1/mailbox/:id</span>
+            <span className="text-gray-500">— Get mailbox details</span>
+          </div>
+          <div className="flex gap-2">
+            <span className="text-red-600 w-20">DELETE</span>
+            <span>/api/v1/mailbox/:id</span>
+            <span className="text-gray-500">— Delete mailbox</span>
+          </div>
+          <div className="flex gap-2">
+            <span className="text-green-600 w-20">GET</span>
             <span>/api/v1/mailbox/:id/messages</span>
             <span className="text-gray-500">— List messages</span>
           </div>
           <div className="flex gap-2">
-            <span className="text-green-600 w-16">GET</span>
+            <span className="text-green-600 w-20">GET</span>
             <span>/api/v1/mailbox/:id/messages/:mid</span>
             <span className="text-gray-500">— Get message + OTP</span>
           </div>
+          <div className="flex gap-2">
+            <span className="text-red-600 w-20">DELETE</span>
+            <span>/api/v1/mailbox/:id/messages/:mid</span>
+            <span className="text-gray-500">— Delete message</span>
+          </div>
         </div>
+      </section>
+      
+      <section className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Message Response</h2>
+        <pre className="bg-gray-100 p-4 rounded overflow-x-auto text-sm">
+{`{
+  "id": "msg-uuid",
+  "from_address": "noreply@example.com",
+  "subject": "Your verification code",
+  "otp": "123456",           // Auto-extracted!
+  "verification_links": [     // Auto-extracted!
+    "https://example.com/verify?token=abc"
+  ],
+  "created_at": "2024-01-29T12:00:00Z"
+}`}
+        </pre>
       </section>
       
       <section className="mb-8">
@@ -140,13 +181,47 @@ curl https://nukopt.com/api/v1/mailbox/{id}/messages \\
         </div>
       </section>
       
+      <section className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">🌍 International OTP Support</h2>
+        <p className="text-gray-600 mb-3">
+          Verification codes are extracted in 15+ languages:
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">English</span>
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">中文</span>
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">日本語</span>
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">한국어</span>
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">العربية</span>
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">Русский</span>
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">Deutsch</span>
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">Español</span>
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">Français</span>
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">Português</span>
+          <span className="px-2 py-1 bg-gray-100 rounded text-sm">+ more</span>
+        </div>
+      </section>
+      
+      <section className="mb-8 border rounded p-4 bg-gray-50">
+        <h2 className="text-xl font-semibold mb-3">Limits</h2>
+        <ul className="text-gray-600 space-y-1">
+          <li>• <strong>5 mailboxes</strong> per API key</li>
+          <li>• <strong>100 emails/day</strong> per mailbox</li>
+          <li>• <strong>7-day retention</strong> (auto-cleanup)</li>
+          <li>• <strong>50KB</strong> text body limit</li>
+        </ul>
+      </section>
+      
       <footer className="text-gray-500 text-sm border-t pt-4">
-        <p>Free tier: 5 mailboxes, 100 emails/day, 7-day retention</p>
-        <p className="mt-1">
+        <p>
           <a href="https://github.com/james-sib/nukopt" className="text-blue-600 hover:underline">
             GitHub
           </a>
+          {" · "}
+          <a href="/api/v1/register" className="text-blue-600 hover:underline">
+            API
+          </a>
         </p>
+        <p className="mt-1 text-xs">Built for the agentic era 🤖</p>
       </footer>
     </main>
   );
