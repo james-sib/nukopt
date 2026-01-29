@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ mailboxes: data });
 }
 
-// Create mailbox (with atomic limit check to prevent race condition)
+// Create mailbox with optimistic concurrency control
 export async function POST(req: NextRequest) {
   const account = await getAccount(req);
   if (!account) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -50,26 +50,40 @@ export async function POST(req: NextRequest) {
   const localPart = crypto.randomBytes(6).toString('hex');
   const email = `${localPart}@nukopt.com`;
   
-  // Atomic insert with limit check using raw SQL
-  // This prevents race conditions by checking limit inside the INSERT
-  const { data, error } = await supabase.rpc('create_mailbox_if_under_limit', {
-    p_account_id: account.id,
-    p_email: email,
-    p_local_part: localPart,
-    p_limit: 5
-  });
+  // Check count first (optimistic check)
+  const { count: preCount } = await supabase
+    .from('nukopt_mailboxes')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_id', account.id);
   
-  if (error) {
-    // Function returns null if limit exceeded
-    if (error.message.includes('limit') || !data) {
-      return NextResponse.json({ error: 'Mailbox limit reached (5)' }, { status: 429 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  
-  if (!data || data.length === 0) {
+  if ((preCount || 0) >= 5) {
     return NextResponse.json({ error: 'Mailbox limit reached (5)' }, { status: 429 });
   }
   
-  return NextResponse.json({ id: data[0].id, email: data[0].email });
+  // Attempt insert
+  const { data, error } = await supabase
+    .from('nukopt_mailboxes')
+    .insert({
+      account_id: account.id,
+      email,
+      local_part: localPart
+    })
+    .select()
+    .single();
+  
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  
+  // Post-insert validation: if over limit, delete and return error
+  const { count: postCount } = await supabase
+    .from('nukopt_mailboxes')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_id', account.id);
+  
+  if ((postCount || 0) > 5) {
+    // Race condition occurred - delete the one we just created
+    await supabase.from('nukopt_mailboxes').delete().eq('id', data.id);
+    return NextResponse.json({ error: 'Mailbox limit reached (5)' }, { status: 429 });
+  }
+  
+  return NextResponse.json({ id: data.id, email: data.email });
 }
