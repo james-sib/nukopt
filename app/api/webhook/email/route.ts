@@ -11,9 +11,35 @@ function getSupabase() {
   );
 }
 
+// Detect and decode base64 content
+function decodeBase64IfNeeded(str: string): string {
+  if (!str) return str;
+  
+  // Check if string looks like base64 (only valid base64 chars, length multiple of 4)
+  const base64Regex = /^[A-Za-z0-9+/\s]+=*$/;
+  const cleanStr = str.trim();
+  
+  // Only try to decode if it looks like pure base64 (no spaces except line breaks)
+  if (base64Regex.test(cleanStr) && cleanStr.length > 20) {
+    try {
+      const decoded = Buffer.from(cleanStr.replace(/\s/g, ''), 'base64').toString('utf-8');
+      // Verify it decoded to valid text (has some printable chars)
+      if (/[\x20-\x7E\u0080-\uFFFF]/.test(decoded) && !/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(decoded)) {
+        return decoded;
+      }
+    } catch {
+      // Not valid base64, return original
+    }
+  }
+  return str;
+}
+
 // Decode quoted-printable encoding (=XX hex and =\r\n line continuations)
 function decodeQuotedPrintable(str: string): string {
   if (!str) return str;
+  
+  // First try to decode base64 if the content looks base64-encoded
+  str = decodeBase64IfNeeded(str);
   
   // Remove soft line breaks
   str = str.replace(/=\r?\n/g, '');
@@ -196,24 +222,45 @@ function extractVerification(text: string, html: string) {
   const decodedHtml = stripInvisibleChars(htmlToText(decodeQuotedPrintable(html || '')));
   const combined = decodedText + ' ' + decodedHtml;
   
+  // Debug: log what we're searching in (first 200 chars)
+  console.log('[OTP] Searching in:', combined.substring(0, 200));
+  
   // OTP extraction - prioritized patterns supporting 4-8 digits
   // Priority 1: Multilingual labeled codes (most reliable)
   // Uses Unicode flag (u) and case-insensitive (i) for proper international support
-  const i18nPattern = new RegExp(`(?:${OTP_KEYWORDS})[^\\d]*(\\d{4,8})`, 'giu');
+  const i18nPattern = new RegExp(`(?:${OTP_KEYWORDS})[^\\d]*?(\\d{4,8})`, 'iu');
   
-  const labeledPatterns = [
-    i18nPattern,  // Multilingual keywords first
-    /\b[Gg]-?(\d{6})\b/g,  // Google-style "G-123456"
-    /\b(\d{4,8})\s+(?:is\s+)?(?:your|the)\s+(?:code|verification|otp)/gi,
+  // Try i18n pattern first
+  const i18nMatch = combined.match(i18nPattern);
+  if (i18nMatch) {
+    console.log('[OTP] i18n match:', i18nMatch[1]);
+    result.otp = i18nMatch[1];
+  }
+  
+  // Priority 2: Language-agnostic colon fallback (very reliable across all languages)
+  // This catches patterns like "：123456" or ": 654321" in any language
+  if (!result.otp) {
+    const colonMatch = combined.match(/[:：]\s*(\d{4,8})(?:\s|$|[^\d])/);
+    if (colonMatch) {
+      console.log('[OTP] Colon match:', colonMatch[1]);
+      result.otp = colonMatch[1];
+    }
+  }
+  
+  // Priority 3: Other patterns
+  const otherPatterns = [
+    /\b[Gg]-?(\d{6})\b/,  // Google-style "G-123456"
+    /\b(\d{4,8})\s+(?:is\s+)?(?:your|the)\s+(?:code|verification|otp)/i,
   ];
   
-  // Try labeled patterns on combined text+html
-  for (const pattern of labeledPatterns) {
-    pattern.lastIndex = 0;
-    const match = pattern.exec(combined);
-    if (match) {
-      result.otp = match[1];
-      break;
+  if (!result.otp) {
+    for (const pattern of otherPatterns) {
+      const match = combined.match(pattern);
+      if (match) {
+        console.log('[OTP] Other match:', match[1]);
+        result.otp = match[1];
+        break;
+      }
     }
   }
   
@@ -225,15 +272,6 @@ function extractVerification(text: string, html: string) {
         result.otp = codeMatch[1];
         break;
       }
-    }
-  }
-  
-  // Language-agnostic fallback: digits after colon (standard or full-width)
-  // This catches patterns like "：123456" or ": 654321" in any language
-  if (!result.otp) {
-    const colonMatch = combined.match(/[:：]\s*(\d{4,8})\b/);
-    if (colonMatch) {
-      result.otp = colonMatch[1];
     }
   }
   
