@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { decrypt } from '@/lib/crypto';
+import { checkRateLimit } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -44,6 +45,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ 
         error: 'Key storage not configured. Please re-register.',
       }, { status: 400 });
+    }
+    
+    // Check rate limit
+    const { success, remaining, reset } = await checkRateLimit(apiKey);
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Try again later.' },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': reset.toString(),
+          }
+        }
+      );
     }
     
     // Decrypt the provider key

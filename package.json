@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.36.1",
     "mailparser": "^3.6.5",
     "next": "^14.0.0",
     "puppeteer-core": "^24.36.1",
