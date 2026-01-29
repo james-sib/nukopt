@@ -41,7 +41,35 @@ function cleanMimeBoundaries(str: string): string {
 function extractVerification(text: string, html: string) {
   const result: { otp?: string; links: string[] } = { links: [] };
   
-  // Decode content before extraction
+  // IMPORTANT: Extract links BEFORE QP decoding to preserve URL integrity
+  // URLs can contain =XX sequences (like token=abc) that shouldn't be decoded
+  const rawCombined = (text || '') + ' ' + (html || '');
+  
+  // Extract verification/confirmation links from RAW content first
+  const linkPatterns = [
+    /https?:\/\/[^\s<>"'\]]+(?:verify|confirm|activate|reset|token|auth|callback|action-token)[^\s<>"'\]]*/gi,
+    /https?:\/\/[^\s<>"'\]]+\?[^\s<>"'\]]*(?:code|token|key)=[^\s<>"'\]]*/gi,
+  ];
+  
+  for (const pattern of linkPatterns) {
+    pattern.lastIndex = 0;
+    const matches = rawCombined.match(pattern);
+    if (matches) {
+      // Clean up any trailing punctuation and HTML entities
+      const cleanedMatches = matches.map(m => 
+        m.replace(/[.,;:!?)]+$/, '')  // Remove trailing punctuation
+         .replace(/&amp;/g, '&')       // Decode HTML entities
+         .replace(/&gt;/g, '>')
+         .replace(/&lt;/g, '<')
+      );
+      result.links.push(...cleanedMatches.slice(0, 5));
+    }
+  }
+  
+  // Dedupe links
+  result.links = [...new Set(result.links)];
+  
+  // NOW decode for OTP extraction (OTPs benefit from QP decoding for accented text)
   const decodedText = decodeQuotedPrintable(text || '');
   const decodedHtml = decodeQuotedPrintable(html || '');
   const combined = decodedText + ' ' + decodedHtml;
@@ -81,32 +109,6 @@ function extractVerification(text: string, html: string) {
       result.otp = fourDigitMatches[0];
     }
   }
-  
-  // Extract verification/confirmation links from both text and HTML
-  const linkPatterns = [
-    /https?:\/\/[^\s<>"'\]]+(?:verify|confirm|activate|token|auth|callback|action-token)[^\s<>"'\]]*/gi,
-    /https?:\/\/[^\s<>"'\]]+\?[^\s<>"'\]]*(?:code|token|key)=[^\s<>"'\]]*/gi,
-  ];
-  
-  // Check both text and HTML
-  const combinedContent = decodedText + ' ' + decodedHtml;
-  for (const pattern of linkPatterns) {
-    pattern.lastIndex = 0;
-    const matches = combinedContent.match(pattern);
-    if (matches) {
-      // Clean up any trailing punctuation and HTML entities
-      const cleanedMatches = matches.map(m => 
-        m.replace(/[.,;:!?)]+$/, '')  // Remove trailing punctuation
-         .replace(/&amp;/g, '&')       // Decode HTML entities
-         .replace(/&gt;/g, '>')
-         .replace(/&lt;/g, '<')
-      );
-      result.links.push(...cleanedMatches.slice(0, 5));
-    }
-  }
-  
-  // Dedupe links
-  result.links = [...new Set(result.links)];
   
   return result;
 }
