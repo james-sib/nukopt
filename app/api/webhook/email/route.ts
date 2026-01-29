@@ -161,11 +161,18 @@ const OTP_KEYWORDS = [
 function extractVerification(text: string, html: string) {
   const result: { otp?: string; links: string[] } = { links: [] };
   
-  // IMPORTANT: Extract links BEFORE QP decoding to preserve URL integrity
-  // URLs can contain =XX sequences (like token=abc) that shouldn't be decoded
-  const rawCombined = (text || '') + ' ' + (html || '');
+  // First, decode QP soft line breaks to reconstruct full URLs
+  // QP uses =\r\n or =\n to wrap long lines
+  let preprocessed = (text || '').replace(/=\r?\n/g, '');
+  let preprocessedHtml = (html || '').replace(/=\r?\n/g, '');
   
-  // Extract verification/confirmation links from RAW content first
+  // Also decode =3D (equals sign) which is common in URLs with query params
+  preprocessed = preprocessed.replace(/=3D/gi, '=');
+  preprocessedHtml = preprocessedHtml.replace(/=3D/gi, '=');
+  
+  const rawCombined = preprocessed + ' ' + preprocessedHtml;
+  
+  // Extract verification/confirmation links
   const linkPatterns = [
     /https?:\/\/[^\s<>"'\]]+(?:verify|confirm|activate|reset|token|auth|callback|action-token)[^\s<>"'\]]*/gi,
     /https?:\/\/[^\s<>"'\]]+\?[^\s<>"'\]]*(?:code|token|key)=[^\s<>"'\]]*/gi,
@@ -175,31 +182,14 @@ function extractVerification(text: string, html: string) {
     pattern.lastIndex = 0;
     const matches = rawCombined.match(pattern);
     if (matches) {
-      // Clean up and decode QP artifacts in links
+      // Clean up links
       const cleanedMatches = matches.map(m => {
         let link = m
           .replace(/[.,;:!?)]+$/, '')  // Remove trailing punctuation
           .replace(/&amp;/g, '&')       // Decode HTML entities
           .replace(/&gt;/g, '>')
-          .replace(/&lt;/g, '<');
-        
-        // Decode QP-encoded chars in URL (=XX -> char)
-        // But preserve URL-encoded chars (%XX) - they're intentional
-        link = link.replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => {
-          const code = parseInt(hex, 16);
-          // Only decode printable ASCII chars that aren't URL-special
-          // This fixes =3D (=) and unicode, but won't break =20 (space) in URLs
-          if (code >= 0x21 && code <= 0x7E && code !== 0x25) { // not space or %
-            return String.fromCharCode(code);
-          }
-          // For non-ASCII (unicode), decode properly
-          if (code >= 0x80) {
-            // Need to handle multi-byte sequences - for now, just pass through
-            // This is a simplified fix; proper UTF-8 would need adjacent bytes
-            return `%${hex.toUpperCase()}`; // Convert to URL encoding
-          }
-          return `=${hex}`; // Keep as-is
-        });
+          .replace(/&lt;/g, '<')
+          .replace(/=3D/gi, '=');       // Decode any remaining QP equals signs
         
         return link;
       });
@@ -373,6 +363,10 @@ export async function POST(req: NextRequest) {
     // Extract verification info
     const verification = extractVerification(text, html);
     
+    // Decode QP before storing to avoid =3D artifacts
+    const decodedText = decodeQuotedPrintable(text || '');
+    const decodedHtml = decodeQuotedPrintable(html || '');
+    
     // Store message (clean MIME artifacts)
     const { error } = await supabase
       .from('nukopt_messages')
@@ -380,8 +374,8 @@ export async function POST(req: NextRequest) {
         mailbox_id: mailbox.id,
         from_address: from,
         subject,
-        text_body: cleanMimeBoundaries(text).substring(0, 50000), // Limit size
-        html_body: cleanMimeBoundaries(html).substring(0, 100000),
+        text_body: cleanMimeBoundaries(decodedText).substring(0, 50000), // Limit size
+        html_body: cleanMimeBoundaries(decodedHtml).substring(0, 100000),
         otp: verification.otp,
         verification_links: verification.links,
         raw_size: rawEmail.length
