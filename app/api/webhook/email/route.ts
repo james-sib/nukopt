@@ -24,32 +24,32 @@ function decodeQuotedPrintable(str: string): string {
 function extractVerification(text: string, html: string) {
   const result: { otp?: string; links: string[] } = { links: [] };
   
+  // Decode content before extraction
+  const decodedText = decodeQuotedPrintable(text || '');
+  const decodedHtml = decodeQuotedPrintable(html || '');
+  const combined = decodedText + ' ' + decodedHtml;
+  
   // OTP extraction - prioritized patterns (first match wins)
-  // Priority 1: Labeled codes (most reliable)
+  // Priority 1: Labeled codes with flexible spacing (most reliable)
   const labeledPatterns = [
-    /(?:code|verification|otp|pin)[:\s]+(\d{6})\b/gi,      // "code: 123456"
-    /(?:code|verification|otp|pin)[:\s]+(\d{4})\b/gi,      // "code: 1234"
-    /(?:code|verification|otp|pin)[:\s]+([A-Z0-9]{4,8})\b/gi, // "code: ABC123"
+    /(?:code|verification|otp|pin)[\s:]+(?:is\s+)?(\d{6})\b/gi,  // "code is 123456" or "code: 123456"
+    /(?:code|verification|otp|pin)[\s:]+(?:is\s+)?(\d{4})\b/gi,  // "code is 1234"
+    /\b(\d{6})\s+(?:is\s+)?(?:your|the)\s+(?:code|verification|otp)/gi,  // "123456 is your code"
   ];
   
-  // Priority 2: Standalone numeric codes
-  const numericPatterns = [
-    /\b(\d{6})\b/g,   // 6-digit (most common OTP length)
-    /\b(\d{4})\b/g,   // 4-digit PIN
-  ];
-  
-  // Try labeled patterns first
+  // Try labeled patterns on combined text+html
   for (const pattern of labeledPatterns) {
-    const match = pattern.exec(text);
+    pattern.lastIndex = 0; // Reset regex state
+    const match = pattern.exec(combined);
     if (match) {
       result.otp = match[1];
       break;
     }
   }
   
-  // If no labeled match, try standalone 6-digit first
+  // If no labeled match, try standalone 6-digit first (prefer text over html)
   if (!result.otp) {
-    const sixDigitMatches = text.match(/\b(\d{6})\b/g);
+    const sixDigitMatches = decodedText.match(/\b(\d{6})\b/g) || decodedHtml.match(/\b(\d{6})\b/g);
     if (sixDigitMatches && sixDigitMatches.length >= 1) {
       // Take first 6-digit match
       result.otp = sixDigitMatches[0];
@@ -58,25 +58,33 @@ function extractVerification(text: string, html: string) {
   
   // If still no match, try 4-digit
   if (!result.otp) {
-    const fourDigitMatches = text.match(/\b(\d{4})\b/g);
+    const fourDigitMatches = decodedText.match(/\b(\d{4})\b/g);
     if (fourDigitMatches && fourDigitMatches.length === 1) {
       // Only if single 4-digit match (avoid false positives like years)
       result.otp = fourDigitMatches[0];
     }
   }
   
-  // Extract verification/confirmation links
+  // Extract verification/confirmation links from both text and HTML
   const linkPatterns = [
-    /https?:\/\/[^\s<>"]+(?:verify|confirm|activate|token|auth|callback)[^\s<>"]*/gi,
-    /https?:\/\/[^\s<>"]+\?[^\s<>"]*(?:code|token|key)=[^\s<>"]*/gi,
+    /https?:\/\/[^\s<>"'\]]+(?:verify|confirm|activate|token|auth|callback|action-token)[^\s<>"'\]]*/gi,
+    /https?:\/\/[^\s<>"'\]]+\?[^\s<>"'\]]*(?:code|token|key)=[^\s<>"'\]]*/gi,
   ];
   
-  // Decode quoted-printable before extracting links
-  const content = decodeQuotedPrintable(html || text);
+  // Check both text and HTML
+  const combinedContent = decodedText + ' ' + decodedHtml;
   for (const pattern of linkPatterns) {
-    const matches = content.match(pattern);
+    pattern.lastIndex = 0;
+    const matches = combinedContent.match(pattern);
     if (matches) {
-      result.links.push(...matches.slice(0, 5)); // Max 5 links
+      // Clean up any trailing punctuation and HTML entities
+      const cleanedMatches = matches.map(m => 
+        m.replace(/[.,;:!?)]+$/, '')  // Remove trailing punctuation
+         .replace(/&amp;/g, '&')       // Decode HTML entities
+         .replace(/&gt;/g, '>')
+         .replace(/&lt;/g, '<')
+      );
+      result.links.push(...cleanedMatches.slice(0, 5));
     }
   }
   
