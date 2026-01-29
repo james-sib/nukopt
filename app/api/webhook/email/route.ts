@@ -112,13 +112,34 @@ function extractVerification(text: string, html: string) {
     pattern.lastIndex = 0;
     const matches = rawCombined.match(pattern);
     if (matches) {
-      // Clean up any trailing punctuation and HTML entities
-      const cleanedMatches = matches.map(m => 
-        m.replace(/[.,;:!?)]+$/, '')  // Remove trailing punctuation
-         .replace(/&amp;/g, '&')       // Decode HTML entities
-         .replace(/&gt;/g, '>')
-         .replace(/&lt;/g, '<')
-      );
+      // Clean up and decode QP artifacts in links
+      const cleanedMatches = matches.map(m => {
+        let link = m
+          .replace(/[.,;:!?)]+$/, '')  // Remove trailing punctuation
+          .replace(/&amp;/g, '&')       // Decode HTML entities
+          .replace(/&gt;/g, '>')
+          .replace(/&lt;/g, '<');
+        
+        // Decode QP-encoded chars in URL (=XX -> char)
+        // But preserve URL-encoded chars (%XX) - they're intentional
+        link = link.replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => {
+          const code = parseInt(hex, 16);
+          // Only decode printable ASCII chars that aren't URL-special
+          // This fixes =3D (=) and unicode, but won't break =20 (space) in URLs
+          if (code >= 0x21 && code <= 0x7E && code !== 0x25) { // not space or %
+            return String.fromCharCode(code);
+          }
+          // For non-ASCII (unicode), decode properly
+          if (code >= 0x80) {
+            // Need to handle multi-byte sequences - for now, just pass through
+            // This is a simplified fix; proper UTF-8 would need adjacent bytes
+            return `%${hex.toUpperCase()}`; // Convert to URL encoding
+          }
+          return `=${hex}`; // Keep as-is
+        });
+        
+        return link;
+      });
       result.links.push(...cleanedMatches.slice(0, 5));
     }
   }
