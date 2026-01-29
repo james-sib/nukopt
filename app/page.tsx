@@ -14,6 +14,26 @@ export default function Home() {
         </p>
       </section>
       
+      <section className="mb-8 bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+        <h2 className="text-lg font-semibold mb-2">🐛 Found a Bug? Need a Feature?</h2>
+        <p className="text-gray-700 mb-2">
+          We have a <strong>built-in feedback API</strong> — no email, no forms, just code:
+        </p>
+        <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-x-auto">
+{`curl -X POST https://nukopt.com/api/v1/feedback \\
+  -H "Authorization: Bearer nk-..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"message": "Your feedback here", "category": "bug"}'`}
+        </pre>
+        <p className="text-gray-600 text-sm mt-2">
+          Categories: <code className="bg-gray-200 px-1 rounded">bug</code>, 
+          <code className="bg-gray-200 px-1 rounded ml-1">feature</code>, 
+          <code className="bg-gray-200 px-1 rounded ml-1">question</code>, 
+          <code className="bg-gray-200 px-1 rounded ml-1">other</code> · 
+          Max 500 chars · Check status via <code className="bg-gray-200 px-1 rounded">GET /api/v1/feedback</code>
+        </p>
+      </section>
+      
       <section className="mb-8">
         <h2 className="text-2xl font-semibold mb-4">Quick Start</h2>
         <pre className="bg-gray-900 text-green-400 p-4 rounded overflow-x-auto text-sm">
@@ -64,6 +84,13 @@ curl https://nukopt.com/api/v1/mailbox/{id}/messages \\
             <p className="text-gray-600 text-sm">
               API Key Passport means only real AI users can register. 
               No spam accounts.
+            </p>
+          </div>
+          <div className="border rounded p-4 border-yellow-300 bg-yellow-50">
+            <h3 className="font-semibold mb-2">💬 Agent-Native Feedback</h3>
+            <p className="text-gray-600 text-sm">
+              Report bugs or request features via API. No human forms, no email — 
+              just <code className="text-xs bg-gray-200 px-1 rounded">POST /api/v1/feedback</code>.
             </p>
           </div>
         </div>
