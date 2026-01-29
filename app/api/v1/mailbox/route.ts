@@ -41,37 +41,35 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ mailboxes: data });
 }
 
-// Create mailbox
+// Create mailbox (with atomic limit check to prevent race condition)
 export async function POST(req: NextRequest) {
   const account = await getAccount(req);
   if (!account) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   
   const supabase = getSupabase();
-  
-  // Check mailbox limit (5 per account)
-  const { count } = await supabase
-    .from('nukopt_mailboxes')
-    .select('*', { count: 'exact', head: true })
-    .eq('account_id', account.id);
-  
-  if ((count || 0) >= 5) {
-    return NextResponse.json({ error: 'Mailbox limit reached (5)' }, { status: 429 });
-  }
-  
-  // Generate random email
   const localPart = crypto.randomBytes(6).toString('hex');
   const email = `${localPart}@nukopt.com`;
   
-  const { data, error } = await supabase
-    .from('nukopt_mailboxes')
-    .insert({
-      account_id: account.id,
-      email,
-      local_part: localPart
-    })
-    .select()
-    .single();
+  // Atomic insert with limit check using raw SQL
+  // This prevents race conditions by checking limit inside the INSERT
+  const { data, error } = await supabase.rpc('create_mailbox_if_under_limit', {
+    p_account_id: account.id,
+    p_email: email,
+    p_local_part: localPart,
+    p_limit: 5
+  });
   
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ id: data.id, email: data.email });
+  if (error) {
+    // Function returns null if limit exceeded
+    if (error.message.includes('limit') || !data) {
+      return NextResponse.json({ error: 'Mailbox limit reached (5)' }, { status: 429 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'Mailbox limit reached (5)' }, { status: 429 });
+  }
+  
+  return NextResponse.json({ id: data[0].id, email: data[0].email });
 }
