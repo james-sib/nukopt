@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { apiLimiter } from '@/app/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,27 @@ export async function GET(req: NextRequest) {
 
 // Create mailbox - DB trigger enforces 5 limit
 export async function POST(req: NextRequest) {
+  // Reject requests with large bodies (no body needed for this endpoint)
+  const contentLength = req.headers.get('content-length');
+  if (contentLength && parseInt(contentLength) > 1024) {
+    return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+  }
+  
+  // Rate limit by IP
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+  try {
+    const { success, remaining } = await apiLimiter.limit(ip);
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many requests', retryAfter: 60 },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      );
+    }
+  } catch (e) {
+    // Rate limiting failure shouldn't block the request
+    console.warn('Rate limiting error:', e);
+  }
+  
   const account = await getAccount(req);
   if (!account) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   
