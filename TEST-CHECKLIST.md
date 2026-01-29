@@ -721,3 +721,26 @@ Deployed 4 specialized test bots:
 - [x] Base64 body → Not decoded (expected)
 - [x] Special chars `<>&"'` → OTP ✅
 - [x] 20-level nested HTML → OTP ✅, Links ✅
+
+### Session 8: More Security Tests (12:23+ CST)
+
+**Infrastructure Check:**
+- [x] MX Records: Cloudflare Email Routing ✅
+- [x] SPF: Properly configured ✅
+- [x] DMARC: Not configured (could add)
+- [x] SSL: Valid Google cert until Apr 2026 ✅
+
+**Method Override Security:**
+- [x] X-HTTP-Method-Override → Ignored ✅
+- [x] X-Method-Override → Ignored ✅
+
+**Header Injection:**
+- [x] Host header injection → Blocked by Cloudflare ✅
+- [x] X-Forwarded-Host → Ignored ✅
+- [x] Referer spoofing → No check (API, expected) ✅
+- [x] Origin spoofing → Bearer auth sufficient ✅
+
+**Auth Case Sensitivity:**
+- [x] "Bearer" → Works ✅
+- [x] "BEARER" → Rejected ✅
+- [x] "bearer" → Rejected ✅
