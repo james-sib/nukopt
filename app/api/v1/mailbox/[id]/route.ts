@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { authenticateApiKey } from '@/app/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,31 +12,23 @@ function getSupabase() {
 }
 
 async function verifyAccess(req: NextRequest, mailboxId: string): Promise<{ status: 'ok' | 'unauthorized' | 'not_found'; account?: any; mailbox?: any }> {
-  const auth = req.headers.get('authorization');
-  if (!auth?.startsWith('Bearer nk-')) return { status: 'unauthorized' };
+  // Use constant-time auth
+  const authResult = await authenticateApiKey(req.headers.get('authorization'));
+  if (!authResult.valid) return { status: 'unauthorized' };
   
   const supabase = getSupabase();
-  
-  // Get account from API key
-  const { data: account } = await supabase
-    .from('nukopt_accounts')
-    .select('id')
-    .eq('api_key', auth.slice(7))
-    .single();
-  
-  if (!account) return { status: 'unauthorized' };
   
   // Verify mailbox belongs to account
   const { data: mailbox } = await supabase
     .from('nukopt_mailboxes')
     .select('id, email, created_at')
     .eq('id', mailboxId)
-    .eq('account_id', account.id)
+    .eq('account_id', authResult.accountId)
     .single();
   
-  if (!mailbox) return { status: 'not_found', account };
+  if (!mailbox) return { status: 'not_found', account: { id: authResult.accountId } };
   
-  return { status: 'ok', account, mailbox };
+  return { status: 'ok', account: { id: authResult.accountId }, mailbox };
 }
 
 // GET /api/v1/mailbox/{id} - Get mailbox details

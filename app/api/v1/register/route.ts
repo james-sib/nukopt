@@ -208,7 +208,25 @@ async function validateApiKey(provider: string, key: string): Promise<boolean> {
   }
 }
 
+// Minimum response time to prevent timing attacks (ms)
+// Set higher than slowest external validation call
+const MIN_RESPONSE_TIME_MS = 500;
+
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+  
+  // Helper to ensure minimum response time before returning
+  async function padAndRespond(response: NextResponse): Promise<NextResponse> {
+    const elapsed = Date.now() - startTime;
+    const remaining = MIN_RESPONSE_TIME_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise(resolve => setTimeout(resolve, remaining));
+    }
+    // Add random jitter (0-50ms) for extra protection
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
+    return response;
+  }
+  
   try {
     // Rate limiting by IP (graceful degradation if Redis unavailable)
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 
@@ -217,13 +235,13 @@ export async function POST(req: NextRequest) {
     try {
       const { success } = await registerLimiter.limit(ip);
       if (!success) {
-        return NextResponse.json({ 
+        return padAndRespond(NextResponse.json({ 
           error: 'Too many requests. Please try again later.',
           retryAfter: 60
         }, { 
           status: 429,
           headers: { 'Retry-After': '60', 'X-RateLimit-Remaining': '0' }
-        });
+        }));
       }
     } catch (rateLimitError) {
       // Redis not configured - continue without rate limiting
@@ -235,29 +253,29 @@ export async function POST(req: NextRequest) {
     try {
       const text = await req.text();
       if (!text || text.trim() === '') {
-        return NextResponse.json({ error: 'Request body is required' }, { status: 400 });
+        return padAndRespond(NextResponse.json({ error: 'Request body is required' }, { status: 400 }));
       }
       body = JSON.parse(text);
     } catch (parseError) {
-      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+      return padAndRespond(NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 }));
     }
     
     const { provider, key } = body;
     
     if (!provider || !key) {
-      return NextResponse.json({ error: 'Missing provider or key' }, { status: 400 });
+      return padAndRespond(NextResponse.json({ error: 'Missing provider or key' }, { status: 400 }));
     }
     
     if (!PROVIDERS[provider]) {
-      return NextResponse.json({ 
+      return padAndRespond(NextResponse.json({ 
         error: `Unsupported provider. Supported: ${Object.keys(PROVIDERS).join(', ')}`,
         providers: Object.entries(PROVIDERS).map(([k, v]) => ({ id: k, description: v.description }))
-      }, { status: 400 });
+      }, { status: 400 }));
     }
     
     const isValid = await validateApiKey(provider, key);
     if (!isValid) {
-      return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+      return padAndRespond(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }));
     }
     
     // Hash the key (never store original)
@@ -274,10 +292,10 @@ export async function POST(req: NextRequest) {
     
     if (existing) {
       // SECURITY: Never return existing API keys - prevents account takeover via leaked third-party keys
-      return NextResponse.json({ 
+      return padAndRespond(NextResponse.json({ 
         error: 'Account already exists. Use your existing nukopt API key.',
         hint: 'If you lost your key, contact support.'
-      }, { status: 409 });
+      }, { status: 409 }));
     }
     
     // Create new account
@@ -294,10 +312,16 @@ export async function POST(req: NextRequest) {
       throw error;
     }
     
-    return NextResponse.json({ api_key: apiKey });
+    return padAndRespond(NextResponse.json({ api_key: apiKey }));
     
   } catch (error) {
     console.error('Registration error:', error);
+    // Pad error responses too
+    const elapsed = Date.now() - startTime;
+    const remaining = MIN_RESPONSE_TIME_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise(resolve => setTimeout(resolve, remaining));
+    }
     return NextResponse.json({ error: 'Registration failed' }, { status: 500 });
   }
 }

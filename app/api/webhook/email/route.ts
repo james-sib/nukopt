@@ -94,6 +94,43 @@ function htmlToText(html: string): string {
     .trim();
 }
 
+// Multilingual OTP keywords
+// Supports: English, German, Russian, Chinese, Japanese, Arabic, Korean, Spanish, French, Portuguese
+const OTP_KEYWORDS = [
+  // English
+  'code', 'verification', 'otp', 'one-time', 'passcode', 'pin', 'security',
+  // German
+  'bestätigungscode', 'einmalpasswort', 'sicherheitscode',
+  // Russian
+  'код', 'пароль', 'проверочный',
+  // Chinese (Simplified & Traditional)
+  '验证码', '驗證碼', '代码', '密码', '安全码',
+  // Japanese
+  'コード', '確認コード', '認証コード', 'パスワード',
+  // Arabic
+  'رمز', 'رمز التحقق', 'كلمة السر',
+  // Korean
+  '코드', '인증번호', '인증 코드', '비밀번호',
+  // Spanish
+  'código', 'contraseña', 'verificación',
+  // French
+  'code de vérification', 'mot de passe',
+  // Portuguese
+  'código de verificação', 'senha',
+  // Italian
+  'codice', 'codice di verifica',
+  // Dutch
+  'verificatiecode', 'wachtwoord',
+  // Turkish
+  'doğrulama kodu', 'şifre',
+  // Polish
+  'kod weryfikacyjny', 'hasło',
+  // Hindi
+  'सत्यापन कोड', 'पासवर्ड',
+  // Thai
+  'รหัส', 'รหัสยืนยัน'
+].join('|');
+
 // Extract verification codes, OTPs, and links from email
 function extractVerification(text: string, html: string) {
   const result: { otp?: string; links: string[] } = { links: [] };
@@ -160,9 +197,12 @@ function extractVerification(text: string, html: string) {
   const combined = decodedText + ' ' + decodedHtml;
   
   // OTP extraction - prioritized patterns supporting 4-8 digits
-  // Priority 1: Labeled codes (most reliable)
+  // Priority 1: Multilingual labeled codes (most reliable)
+  // Uses Unicode flag (u) and case-insensitive (i) for proper international support
+  const i18nPattern = new RegExp(`(?:${OTP_KEYWORDS})[^\\d]*(\\d{4,8})`, 'giu');
+  
   const labeledPatterns = [
-    /(?:code|verification|otp|pin|security)[\s:]+(?:is\s+)?(\d{4,8})\b/gi,
+    i18nPattern,  // Multilingual keywords first
     /\b[Gg]-?(\d{6})\b/g,  // Google-style "G-123456"
     /\b(\d{4,8})\s+(?:is\s+)?(?:your|the)\s+(?:code|verification|otp)/gi,
   ];
@@ -185,6 +225,15 @@ function extractVerification(text: string, html: string) {
         result.otp = codeMatch[1];
         break;
       }
+    }
+  }
+  
+  // Language-agnostic fallback: digits after colon (standard or full-width)
+  // This catches patterns like "：123456" or ": 654321" in any language
+  if (!result.otp) {
+    const colonMatch = combined.match(/[:：]\s*(\d{4,8})\b/);
+    if (colonMatch) {
+      result.otp = colonMatch[1];
     }
   }
   

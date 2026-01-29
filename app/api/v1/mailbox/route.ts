@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { apiLimiter } from '@/app/lib/rateLimit';
+import { authenticateApiKey, addTimingJitter } from '@/app/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,19 +13,11 @@ function getSupabase() {
   );
 }
 
+// Legacy function for backwards compatibility
 async function getAccount(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (!auth?.startsWith('Bearer nk-')) return null;
-  const apiKey = auth.slice(7);
-  
-  const supabase = getSupabase();
-  const { data } = await supabase
-    .from('nukopt_accounts')
-    .select('id')
-    .eq('api_key', apiKey)
-    .single();
-  
-  return data;
+  const authResult = await authenticateApiKey(req.headers.get('authorization'));
+  if (!authResult.valid) return null;
+  return { id: authResult.accountId };
 }
 
 // List mailboxes
