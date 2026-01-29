@@ -1,24 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { apiLimiter } from '@/app/lib/rateLimit';
+import { apiLimiter, addRateLimitHeaders } from '@/app/lib/rateLimit';
 import { authenticateApiKey } from '@/app/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-async function checkRateLimit(req: NextRequest): Promise<NextResponse | null> {
+interface RateLimitResult {
+  blocked: boolean;
+  response?: NextResponse;
+  info?: { limit: number; remaining: number; reset: number };
+}
+
+async function checkRateLimit(req: NextRequest): Promise<RateLimitResult> {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
   try {
-    const { success } = await apiLimiter.limit(ip);
+    const { success, limit, remaining, reset } = await apiLimiter.limit(ip);
+    const info = { limit, remaining, reset };
     if (!success) {
-      return NextResponse.json(
-        { error: 'Too many requests', retryAfter: 60 },
-        { status: 429, headers: { 'Retry-After': '60' } }
-      );
+      const headers = new Headers({ 'Retry-After': '60' });
+      addRateLimitHeaders(headers, info);
+      return {
+        blocked: true,
+        response: NextResponse.json(
+          { error: 'Too many requests', retryAfter: 60 },
+          { status: 429, headers }
+        ),
+        info
+      };
     }
+    return { blocked: false, info };
   } catch (e) {
     console.warn('Rate limiting error:', e);
+    return { blocked: false };
   }
-  return null;
 }
 
 function getSupabase() {
@@ -50,8 +64,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const rateLimitResponse = await checkRateLimit(req);
-  if (rateLimitResponse) return rateLimitResponse;
+  const rateLimit = await checkRateLimit(req);
+  if (rateLimit.blocked) return rateLimit.response!;
   
   const { id } = await params;
   
@@ -77,5 +91,10 @@ export async function GET(
     .limit(limit);
   
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ messages: data });
+  
+  const response = NextResponse.json({ messages: data });
+  if (rateLimit.info) {
+    addRateLimitHeaders(response.headers, rateLimit.info);
+  }
+  return response;
 }

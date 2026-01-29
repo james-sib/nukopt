@@ -23,3 +23,13 @@ export const apiLimiter = new Ratelimit({
   analytics: true,
   prefix: 'nukopt:ratelimit:api',
 });
+
+// Helper to add rate limit headers to response
+export function addRateLimitHeaders(
+  headers: Headers,
+  result: { limit: number; remaining: number; reset: number }
+) {
+  headers.set('X-RateLimit-Limit', result.limit.toString());
+  headers.set('X-RateLimit-Remaining', result.remaining.toString());
+  headers.set('X-RateLimit-Reset', result.reset.toString());
+}

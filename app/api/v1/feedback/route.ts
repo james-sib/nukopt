@@ -60,11 +60,15 @@ export async function POST(req: NextRequest) {
     
     // Validate category if provided
     const validCategories = ['bug', 'feature', 'question', 'other'];
-    const feedbackCategory = category && validCategories.includes(category) ? category : 'other';
     
-    if (category && category.length > MAX_CATEGORY_LENGTH) {
-      return NextResponse.json({ error: 'Category too long' }, { status: 400 });
+    if (category && !validCategories.includes(category)) {
+      return NextResponse.json({ 
+        error: `Invalid category. Must be one of: ${validCategories.join(', ')}`,
+        validCategories
+      }, { status: 400 });
     }
+    
+    const feedbackCategory = category || 'other';
     
     const supabase = getSupabase();
     

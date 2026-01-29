@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
-import { apiLimiter } from '@/app/lib/rateLimit';
+import { apiLimiter, addRateLimitHeaders } from '@/app/lib/rateLimit';
 import { authenticateApiKey, addTimingJitter } from '@/app/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -45,12 +45,16 @@ export async function POST(req: NextRequest) {
   
   // Rate limit by IP
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
+  let rateLimitInfo: { limit: number; remaining: number; reset: number } | null = null;
   try {
-    const { success, remaining } = await apiLimiter.limit(ip);
+    const { success, limit, remaining, reset } = await apiLimiter.limit(ip);
+    rateLimitInfo = { limit, remaining, reset };
     if (!success) {
+      const headers = new Headers({ 'Retry-After': '60' });
+      addRateLimitHeaders(headers, rateLimitInfo);
       return NextResponse.json(
         { error: 'Too many requests', retryAfter: 60 },
-        { status: 429, headers: { 'Retry-After': '60' } }
+        { status: 429, headers }
       );
     }
   } catch (e) {
@@ -83,5 +87,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   
-  return NextResponse.json({ id: data.id, email: data.email });
+  const response = NextResponse.json({ id: data.id, email: data.email });
+  if (rateLimitInfo) {
+    addRateLimitHeaders(response.headers, rateLimitInfo);
+  }
+  return response;
 }
