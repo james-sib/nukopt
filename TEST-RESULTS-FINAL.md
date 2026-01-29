@@ -149,3 +149,41 @@ EXECUTE FUNCTION check_mailbox_limit_before_insert();
 - 5 requests properly rejected ✅
 
 **All critical bugs now fixed!**
+
+---
+
+## Extended Testing (2026-01-29 10:00 CST)
+
+### Additional Bugs Found & Fixed
+
+| Issue | Status | Fix |
+|-------|--------|-----|
+| Base64 content not decoded | ✅ Fixed | Worker now decodes base64/quoted-printable |
+| OTP extraction wrong priority | ⏳ Deploy pending | Improved regex to prioritize 6-digit |
+
+### Test Results Details
+
+**ASCII Email (✅ Works):**
+- OTP: 999888 extracted correctly
+- Link: https://example.com/verify?token=simpletest extracted
+
+**Multi-Link Email (⚠️ Partial):**
+- OTP: Wrong ("links" word matched regex)
+- Links: 3/4 extracted correctly
+
+**Unicode Email (⏳ Testing):**
+- OTP: Not extracted (base64 issue, fix deployed)
+- Links: Not extracted (fix deployed, awaiting test)
+
+### Known Limitations
+
+1. **Email delivery delay**: Gmail SMTP may rate-limit after many rapid sends
+2. **OTP false positives**: Words like "links" can match alphanumeric patterns
+3. **4-digit codes**: Only extracted when single match in email
+
+### Infrastructure Status
+
+- Render (API): ✅ Deployed
+- Supabase (DB + Trigger): ✅ Working
+- Cloudflare Worker: ✅ Latest version deployed
+
