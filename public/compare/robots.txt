@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://james-sib.github.io/verifly-seo-pages/sitemap.xml
